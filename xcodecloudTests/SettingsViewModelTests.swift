@@ -160,4 +160,12 @@ private final class MockAppStoreConnectAPI: AppStoreConnectAPI {
             throw error
         }
     }
+
+    func fetchApps(credentials: AppStoreConnectCredentials) async throws -> [ASCAppSummary] {
+        []
+    }
+
+    func fetchLatestBuildRuns(credentials: AppStoreConnectCredentials, appID: String, limit: Int) async throws -> [BuildRunSummary] {
+        []
+    }
 }

@@ -10,6 +10,14 @@ struct XcodecloudApp: App {
                 .environment(buildFeedStore)
         }
 #if os(macOS)
+        MenuBarExtra {
+            MenuBarRootView()
+                .environment(buildFeedStore)
+        } label: {
+            Label("Xcode Cloud", systemImage: buildFeedStore.menuBarSymbolName)
+        }
+        .menuBarExtraStyle(.window)
+
         Settings {
             NavigationStack {
                 SettingsView()
