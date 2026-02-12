@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(BuildFeedStore.self) private var buildFeedStore
+    @AppStorage("autoRefreshEnabled") private var autoRefreshEnabled = true
+    @AppStorage("autoRefreshIntervalSeconds") private var autoRefreshIntervalSeconds: Double = 60
 
 #if os(macOS)
     @Environment(\.openSettings) private var openSettingsAction
@@ -11,24 +13,20 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if buildFeedStore.hasCompleteCredentials {
-                    ContentUnavailableView(
-                        "Dashboard Coming Soon",
-                        systemImage: "chart.bar.horizontal.page",
-                        description: Text("Credentials are configured. Next step is loading build runs from Xcode Cloud.")
-                    )
-                } else {
-                    ContentUnavailableView(
-                        "Credentials Missing",
-                        systemImage: "key.slash",
-                        description: Text("Open Settings to add App Store Connect API credentials.")
-                    )
-                }
-            }
-            .accessibilityIdentifier("dashboard-status-view")
-            .navigationTitle("Dashboard")
+            BuildDashboardView()
+            .navigationTitle(buildFeedStore.isMonitoringAllApps ? "Portfolio" : "Dashboard")
             .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        Task {
+                            await buildFeedStore.refreshBuildRuns()
+                        }
+                    } label: {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
+                    .disabled(buildFeedStore.isLoadingBuildRuns)
+                }
+
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         openSettings()
@@ -38,9 +36,25 @@ struct ContentView: View {
                     .accessibilityIdentifier("open-settings-button")
                 }
             }
-            .onAppear {
-                buildFeedStore.reloadCredentials()
-            }
+        }
+        .task {
+            await buildFeedStore.loadInitialState()
+            buildFeedStore.configureAutoRefresh(
+                enabled: autoRefreshEnabled,
+                intervalSeconds: autoRefreshIntervalSeconds
+            )
+        }
+        .onChange(of: autoRefreshEnabled) { _, isEnabled in
+            buildFeedStore.configureAutoRefresh(
+                enabled: isEnabled,
+                intervalSeconds: autoRefreshIntervalSeconds
+            )
+        }
+        .onChange(of: autoRefreshIntervalSeconds) { _, newInterval in
+            buildFeedStore.configureAutoRefresh(
+                enabled: autoRefreshEnabled,
+                intervalSeconds: newInterval
+            )
         }
 #if !os(macOS)
         .sheet(isPresented: $isShowingSettings) {

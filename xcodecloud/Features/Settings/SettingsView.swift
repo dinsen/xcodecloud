@@ -6,7 +6,7 @@ struct SettingsView: View {
 
     @AppStorage("autoRefreshEnabled") private var autoRefreshEnabled = true
     @AppStorage("autoRefreshIntervalSeconds") private var autoRefreshIntervalSeconds: Double = 60
-    @AppStorage("selectedAppDisplayName") private var selectedAppDisplayName = "Not selected"
+    @State private var selectedMonitoringMode: BuildMonitoringMode = .singleApp
 
     var body: some View {
         Form {
@@ -46,21 +46,71 @@ struct SettingsView: View {
             }
 
             Section("Monitored App") {
-                HStack {
-                    Image(systemName: "app.badge")
-                        .foregroundStyle(.secondary)
-                    Text(selectedAppDisplayName)
-                    Spacer()
-                    Text("Coming Soon")
+                Picker("Scope", selection: $selectedMonitoringMode) {
+                    ForEach(BuildMonitoringMode.allCases, id: \.self) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                if selectedMonitoringMode == .singleApp {
+                    NavigationLink {
+                        AppSelectionView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "app.badge")
+                                .foregroundStyle(.secondary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Selected App")
+                                Text(buildFeedStore.monitoredAppDescription)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .accessibilityIdentifier("settings-app-selection-link")
+
+                    if let appSelectionMessage = buildFeedStore.appSelectionMessage {
+                        Text(appSelectionMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Choose the App Store Connect app to monitor in dashboard and menu bar.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text("Portfolio mode monitors all available apps and aggregates recent build runs.")
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-
-                Text("App search and selection is the next step after credentials setup.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Settings")
+        .task {
+            if buildFeedStore.hasCompleteCredentials && buildFeedStore.availableApps.isEmpty {
+                await buildFeedStore.loadApps()
+            }
+
+            selectedMonitoringMode = buildFeedStore.monitoringMode
+        }
+        .onChange(of: autoRefreshEnabled) { _, isEnabled in
+            buildFeedStore.configureAutoRefresh(
+                enabled: isEnabled,
+                intervalSeconds: autoRefreshIntervalSeconds
+            )
+        }
+        .onChange(of: autoRefreshIntervalSeconds) { _, newInterval in
+            buildFeedStore.configureAutoRefresh(
+                enabled: autoRefreshEnabled,
+                intervalSeconds: newInterval
+            )
+        }
+        .onChange(of: selectedMonitoringMode) { _, newMode in
+            Task {
+                await buildFeedStore.setMonitoringMode(newMode)
+            }
+        }
 #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
