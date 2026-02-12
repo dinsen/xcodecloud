@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		2BDAF9FA75421C64F66F8EB1 /* BuildLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBE42EBC22335D31FCF1F66D /* BuildLiveActivityWidget.swift */; };
-		721AD5E393662AC6CA0E8B17 /* BuildLiveActivityWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FF576CFD2FBD73002AE2BBB /* BuildLiveActivityWidgetBundle.swift */; };
 		BCE0406776FE2C20F164666E /* xcodecloudLiveActivityWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = F0F2A6B70A6C900A5C4F586C /* xcodecloudLiveActivityWidget.appex */; platformFilter = ios; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -51,35 +49,44 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		7FF576CFD2FBD73002AE2BBB /* BuildLiveActivityWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BuildLiveActivityWidgetBundle.swift; sourceTree = "<group>"; };
 		9D53BB742F3DCCAD000A47BF /* xcodecloud.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = xcodecloud.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D53BB832F3DCCAE000A47BF /* xcodecloudTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = xcodecloudTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D53BB8D2F3DCCAE000A47BF /* xcodecloudUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = xcodecloudUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		BBE42EBC22335D31FCF1F66D /* BuildLiveActivityWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BuildLiveActivityWidget.swift; sourceTree = "<group>"; };
-		C0ACBE544F5717FAAE0922CD /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F0F2A6B70A6C900A5C4F586C /* xcodecloudLiveActivityWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = xcodecloudLiveActivityWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9D53BE232F3E6230000A47BF /* Exceptions for "xcodecloudLiveActivityWidget" folder in "xcodecloudLiveActivityWidget" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 12CAFC53D3EEEC78C18EF628 /* xcodecloudLiveActivityWidget */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9D53BB762F3DCCAD000A47BF /* xcodecloud */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = xcodecloud;
 			sourceTree = "<group>";
 		};
 		9D53BB862F3DCCAE000A47BF /* xcodecloudTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = xcodecloudTests;
 			sourceTree = "<group>";
 		};
 		9D53BB902F3DCCAE000A47BF /* xcodecloudUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = xcodecloudUITests;
+			sourceTree = "<group>";
+		};
+		9D53BE1F2F3E6230000A47BF /* xcodecloudLiveActivityWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9D53BE232F3E6230000A47BF /* Exceptions for "xcodecloudLiveActivityWidget" folder in "xcodecloudLiveActivityWidget" target */,
+			);
+			path = xcodecloudLiveActivityWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -116,17 +123,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		02C08787128397D0F386CAFC /* xcodecloudLiveActivityWidget */ = {
-			isa = PBXGroup;
-			children = (
-				7FF576CFD2FBD73002AE2BBB /* BuildLiveActivityWidgetBundle.swift */,
-				BBE42EBC22335D31FCF1F66D /* BuildLiveActivityWidget.swift */,
-				C0ACBE544F5717FAAE0922CD /* Info.plist */,
-			);
-			name = xcodecloudLiveActivityWidget;
-			path = xcodecloudLiveActivityWidget;
-			sourceTree = "<group>";
-		};
 		9D53BB6B2F3DCCAD000A47BF = {
 			isa = PBXGroup;
 			children = (
@@ -134,7 +130,7 @@
 				9D53BB862F3DCCAE000A47BF /* xcodecloudTests */,
 				9D53BB902F3DCCAE000A47BF /* xcodecloudUITests */,
 				9D53BB752F3DCCAD000A47BF /* Products */,
-				02C08787128397D0F386CAFC /* xcodecloudLiveActivityWidget */,
+				9D53BE1F2F3E6230000A47BF /* xcodecloudLiveActivityWidget */,
 			);
 			sourceTree = "<group>";
 		};
@@ -163,6 +159,9 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				9D53BE1F2F3E6230000A47BF /* xcodecloudLiveActivityWidget */,
 			);
 			name = xcodecloudLiveActivityWidget;
 			productName = xcodecloudLiveActivityWidget;
@@ -314,8 +313,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				721AD5E393662AC6CA0E8B17 /* BuildLiveActivityWidgetBundle.swift in Sources */,
-				2BDAF9FA75421C64F66F8EB1 /* BuildLiveActivityWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -543,11 +540,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = EA5MF9LCWZ;
-				ENABLE_APP_SANDBOX = YES;
-				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
-				ENABLE_HARDENED_RUNTIME = YES;
+				"ENABLE_APP_SANDBOX[sdk=macosx*]" = YES;
+				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
+				"ENABLE_OUTGOING_NETWORK_CONNECTIONS[sdk=macosx*]" = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				"ENABLE_USER_SELECTED_FILES[sdk=macosx*]" = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				"INFOPLIST_KEY_LSApplicationCategoryType[sdk=macosx*]" = "public.app-category.developer-tools";
@@ -593,11 +590,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = EA5MF9LCWZ;
-				ENABLE_APP_SANDBOX = YES;
-				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
-				ENABLE_HARDENED_RUNTIME = YES;
+				"ENABLE_APP_SANDBOX[sdk=macosx*]" = YES;
+				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
+				"ENABLE_OUTGOING_NETWORK_CONNECTIONS[sdk=macosx*]" = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				"ENABLE_USER_SELECTED_FILES[sdk=macosx*]" = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				"INFOPLIST_KEY_LSApplicationCategoryType[sdk=macosx*]" = "public.app-category.developer-tools";
