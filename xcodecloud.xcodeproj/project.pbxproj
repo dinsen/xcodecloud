@@ -6,7 +6,20 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		2BDAF9FA75421C64F66F8EB1 /* BuildLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBE42EBC22335D31FCF1F66D /* BuildLiveActivityWidget.swift */; };
+		721AD5E393662AC6CA0E8B17 /* BuildLiveActivityWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FF576CFD2FBD73002AE2BBB /* BuildLiveActivityWidgetBundle.swift */; };
+		BCE0406776FE2C20F164666E /* xcodecloudLiveActivityWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = F0F2A6B70A6C900A5C4F586C /* xcodecloudLiveActivityWidget.appex */; platformFilter = ios; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		37FD2A1D89A9536C8D120AA9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9D53BB6C2F3DCCAD000A47BF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 12CAFC53D3EEEC78C18EF628;
+			remoteInfo = xcodecloudLiveActivityWidget;
+		};
 		9D53BB842F3DCCAE000A47BF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9D53BB6C2F3DCCAD000A47BF /* Project object */;
@@ -23,25 +36,49 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		8B6C6B0C6D48706FA84E6D5D /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BCE0406776FE2C20F164666E /* xcodecloudLiveActivityWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		7FF576CFD2FBD73002AE2BBB /* BuildLiveActivityWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BuildLiveActivityWidgetBundle.swift; sourceTree = "<group>"; };
 		9D53BB742F3DCCAD000A47BF /* xcodecloud.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = xcodecloud.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D53BB832F3DCCAE000A47BF /* xcodecloudTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = xcodecloudTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D53BB8D2F3DCCAE000A47BF /* xcodecloudUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = xcodecloudUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BBE42EBC22335D31FCF1F66D /* BuildLiveActivityWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BuildLiveActivityWidget.swift; sourceTree = "<group>"; };
+		C0ACBE544F5717FAAE0922CD /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F0F2A6B70A6C900A5C4F586C /* xcodecloudLiveActivityWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = xcodecloudLiveActivityWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9D53BB762F3DCCAD000A47BF /* xcodecloud */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = xcodecloud;
 			sourceTree = "<group>";
 		};
 		9D53BB862F3DCCAE000A47BF /* xcodecloudTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = xcodecloudTests;
 			sourceTree = "<group>";
 		};
 		9D53BB902F3DCCAE000A47BF /* xcodecloudUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = xcodecloudUITests;
 			sourceTree = "<group>";
 		};
@@ -69,9 +106,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AE47335B4206AF1DBD84E60A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		02C08787128397D0F386CAFC /* xcodecloudLiveActivityWidget */ = {
+			isa = PBXGroup;
+			children = (
+				7FF576CFD2FBD73002AE2BBB /* BuildLiveActivityWidgetBundle.swift */,
+				BBE42EBC22335D31FCF1F66D /* BuildLiveActivityWidget.swift */,
+				C0ACBE544F5717FAAE0922CD /* Info.plist */,
+			);
+			name = xcodecloudLiveActivityWidget;
+			path = xcodecloudLiveActivityWidget;
+			sourceTree = "<group>";
+		};
 		9D53BB6B2F3DCCAD000A47BF = {
 			isa = PBXGroup;
 			children = (
@@ -79,6 +134,7 @@
 				9D53BB862F3DCCAE000A47BF /* xcodecloudTests */,
 				9D53BB902F3DCCAE000A47BF /* xcodecloudUITests */,
 				9D53BB752F3DCCAD000A47BF /* Products */,
+				02C08787128397D0F386CAFC /* xcodecloudLiveActivityWidget */,
 			);
 			sourceTree = "<group>";
 		};
@@ -88,6 +144,7 @@
 				9D53BB742F3DCCAD000A47BF /* xcodecloud.app */,
 				9D53BB832F3DCCAE000A47BF /* xcodecloudTests.xctest */,
 				9D53BB8D2F3DCCAE000A47BF /* xcodecloudUITests.xctest */,
+				F0F2A6B70A6C900A5C4F586C /* xcodecloudLiveActivityWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,6 +152,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		12CAFC53D3EEEC78C18EF628 /* xcodecloudLiveActivityWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BFC3DB653FFF1F4A7AF76265 /* Build configuration list for PBXNativeTarget "xcodecloudLiveActivityWidget" */;
+			buildPhases = (
+				7F15359B056A327F7D469168 /* Sources */,
+				AE47335B4206AF1DBD84E60A /* Frameworks */,
+				68E679D3905F0062AA82DBCA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = xcodecloudLiveActivityWidget;
+			productName = xcodecloudLiveActivityWidget;
+			productReference = F0F2A6B70A6C900A5C4F586C /* xcodecloudLiveActivityWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		9D53BB732F3DCCAD000A47BF /* xcodecloud */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9D53BB972F3DCCAE000A47BF /* Build configuration list for PBXNativeTarget "xcodecloud" */;
@@ -102,17 +176,17 @@
 				9D53BB702F3DCCAD000A47BF /* Sources */,
 				9D53BB712F3DCCAD000A47BF /* Frameworks */,
 				9D53BB722F3DCCAD000A47BF /* Resources */,
+				8B6C6B0C6D48706FA84E6D5D /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				5F61E41E6ED376C5E1A07B30 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				9D53BB762F3DCCAD000A47BF /* xcodecloud */,
 			);
 			name = xcodecloud;
-			packageProductDependencies = (
-			);
 			productName = xcodecloud;
 			productReference = 9D53BB742F3DCCAD000A47BF /* xcodecloud.app */;
 			productType = "com.apple.product-type.application";
@@ -134,8 +208,6 @@
 				9D53BB862F3DCCAE000A47BF /* xcodecloudTests */,
 			);
 			name = xcodecloudTests;
-			packageProductDependencies = (
-			);
 			productName = xcodecloudTests;
 			productReference = 9D53BB832F3DCCAE000A47BF /* xcodecloudTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -157,8 +229,6 @@
 				9D53BB902F3DCCAE000A47BF /* xcodecloudUITests */,
 			);
 			name = xcodecloudUITests;
-			packageProductDependencies = (
-			);
 			productName = xcodecloudUITests;
 			productReference = 9D53BB8D2F3DCCAE000A47BF /* xcodecloudUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -203,11 +273,19 @@
 				9D53BB732F3DCCAD000A47BF /* xcodecloud */,
 				9D53BB822F3DCCAE000A47BF /* xcodecloudTests */,
 				9D53BB8C2F3DCCAE000A47BF /* xcodecloudUITests */,
+				12CAFC53D3EEEC78C18EF628 /* xcodecloudLiveActivityWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		68E679D3905F0062AA82DBCA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9D53BB722F3DCCAD000A47BF /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -232,6 +310,15 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		7F15359B056A327F7D469168 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				721AD5E393662AC6CA0E8B17 /* BuildLiveActivityWidgetBundle.swift in Sources */,
+				2BDAF9FA75421C64F66F8EB1 /* BuildLiveActivityWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9D53BB702F3DCCAD000A47BF /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -256,6 +343,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		5F61E41E6ED376C5E1A07B30 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = xcodecloudLiveActivityWidget;
+			target = 12CAFC53D3EEEC78C18EF628 /* xcodecloudLiveActivityWidget */;
+			targetProxy = 37FD2A1D89A9536C8D120AA9 /* PBXContainerItemProxy */;
+		};
 		9D53BB852F3DCCAE000A47BF /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 9D53BB732F3DCCAD000A47BF /* xcodecloud */;
@@ -269,6 +362,63 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		185675C72395801EBBA963B4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = EA5MF9LCWZ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = xcodecloudLiveActivityWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ios.dinsen.xcodecloud.liveactivitywidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		542A6BB5E5E4C15E7E87E996 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = EA5MF9LCWZ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = xcodecloudLiveActivityWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ios.dinsen.xcodecloud.liveactivitywidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		9D53BB952F3DCCAE000A47BF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -400,6 +550,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				"INFOPLIST_KEY_LSApplicationCategoryType[sdk=macosx*]" = "public.app-category.developer-tools";
+				"INFOPLIST_KEY_NSSupportsLiveActivities[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_NSSupportsLiveActivities[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -447,6 +599,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				"INFOPLIST_KEY_LSApplicationCategoryType[sdk=macosx*]" = "public.app-category.developer-tools";
+				"INFOPLIST_KEY_NSSupportsLiveActivities[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_NSSupportsLiveActivities[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -616,6 +770,15 @@
 			buildConfigurations = (
 				9D53BB9E2F3DCCAE000A47BF /* Debug */,
 				9D53BB9F2F3DCCAE000A47BF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BFC3DB653FFF1F4A7AF76265 /* Build configuration list for PBXNativeTarget "xcodecloudLiveActivityWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				185675C72395801EBBA963B4 /* Release */,
+				542A6BB5E5E4C15E7E87E996 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
