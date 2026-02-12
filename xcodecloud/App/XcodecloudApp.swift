@@ -1,25 +1,21 @@
 import SwiftUI
-import SwiftData
 
 @main
 struct XcodecloudApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    @State private var buildFeedStore = BuildFeedStore()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(buildFeedStore)
         }
-        .modelContainer(sharedModelContainer)
+#if os(macOS)
+        Settings {
+            NavigationStack {
+                SettingsView()
+                    .environment(buildFeedStore)
+            }
+        }
+#endif
     }
 }
