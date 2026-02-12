@@ -110,6 +110,27 @@ final class BuildFeedStore {
             }
     }
 
+    var portfolioRunningBuilds: [BuildRunSummary] {
+        buildRuns
+            .filter { $0.status == .running }
+            .sorted(by: Self.sortRunsByLastRun)
+    }
+
+    var portfolioFailedBuilds: [BuildRunSummary] {
+        buildRuns
+            .filter { $0.status == .failed }
+            .sorted(by: Self.sortRunsByLastRun)
+    }
+
+    var portfolioSuccessfulBuilds: [BuildRunSummary] {
+        Array(
+            buildRuns
+                .filter { $0.status == .succeeded }
+                .sorted(by: Self.sortRunsByLastRun)
+                .prefix(20)
+        )
+    }
+
     var overallStatus: BuildStatus {
         guard !buildRuns.isEmpty else { return .unknown }
         return buildRuns.min(by: { $0.status.priority < $1.status.priority })?.status ?? .unknown
@@ -506,7 +527,7 @@ final class BuildFeedStore {
                         let appRuns = try await apiClient.fetchLatestBuildRuns(
                             credentials: credentials,
                             appID: app.id,
-                            limit: 6
+                            limit: 20
                         )
                         mergedRuns.append(contentsOf: appRuns.map { $0.withApp(app) })
                     } catch {
@@ -650,5 +671,16 @@ final class BuildFeedStore {
         let lhsDate = lhs.timestamp ?? .distantPast
         let rhsDate = rhs.timestamp ?? .distantPast
         return lhsDate > rhsDate
+    }
+
+    private static func sortRunsByLastRun(lhs: BuildRunSummary, rhs: BuildRunSummary) -> Bool {
+        let lhsDate = lhs.finishedDate ?? lhs.startedDate ?? lhs.createdDate ?? .distantPast
+        let rhsDate = rhs.finishedDate ?? rhs.startedDate ?? rhs.createdDate ?? .distantPast
+
+        if lhsDate != rhsDate {
+            return lhsDate > rhsDate
+        }
+
+        return sortRuns(lhs: lhs, rhs: rhs)
     }
 }

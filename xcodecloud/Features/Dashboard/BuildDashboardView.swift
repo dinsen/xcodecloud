@@ -11,7 +11,7 @@ struct BuildDashboardView: View {
                     systemImage: "key.slash",
                     description: Text("Open Settings to add App Store Connect API credentials.")
                 )
-            } else if buildFeedStore.selectedApp == nil {
+            } else if !buildFeedStore.isMonitoringAllApps && buildFeedStore.selectedApp == nil {
                 ContentUnavailableView(
                     "Select an App",
                     systemImage: "app.badge",
@@ -72,13 +72,46 @@ struct BuildDashboardView: View {
                     }
 
                     if buildFeedStore.isMonitoringAllApps {
-                        ForEach(buildFeedStore.appSections) { appSection in
-                            Section(appSection.app.name) {
-                                ForEach(appSection.runs.prefix(6)) { run in
+                        Section("Running Builds") {
+                            if buildFeedStore.portfolioRunningBuilds.isEmpty {
+                                Text("No running builds.")
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(buildFeedStore.portfolioRunningBuilds) { run in
                                     NavigationLink {
                                         BuildDetailView(run: run)
                                     } label: {
-                                        BuildRunRowView(run: run, showsAppName: false)
+                                        BuildRunRowView(run: run)
+                                    }
+                                }
+                            }
+                        }
+
+                        Section("Failed Builds") {
+                            if buildFeedStore.portfolioFailedBuilds.isEmpty {
+                                Text("No failed builds.")
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(buildFeedStore.portfolioFailedBuilds) { run in
+                                    NavigationLink {
+                                        BuildDetailView(run: run)
+                                    } label: {
+                                        BuildRunRowView(run: run)
+                                    }
+                                }
+                            }
+                        }
+
+                        Section("Latest Successful Builds (20)") {
+                            if buildFeedStore.portfolioSuccessfulBuilds.isEmpty {
+                                Text("No successful builds.")
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(buildFeedStore.portfolioSuccessfulBuilds) { run in
+                                    NavigationLink {
+                                        BuildDetailView(run: run)
+                                    } label: {
+                                        BuildRunRowView(run: run)
                                     }
                                 }
                             }
