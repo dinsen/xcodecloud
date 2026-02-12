@@ -168,4 +168,10 @@ private final class MockAppStoreConnectAPI: AppStoreConnectAPI {
     func fetchLatestBuildRuns(credentials: AppStoreConnectCredentials, appID: String, limit: Int) async throws -> [BuildRunSummary] {
         []
     }
+
+    func fetchWorkflows(credentials: AppStoreConnectCredentials, appID: String) async throws -> [CIWorkflowSummary] {
+        []
+    }
+
+    func triggerBuild(credentials: AppStoreConnectCredentials, appID: String, workflowID: String, clean: Bool) async throws {}
 }

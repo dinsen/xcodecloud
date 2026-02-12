@@ -28,10 +28,14 @@ final class BuildFeedStore {
     private(set) var selectedApp: ASCAppSummary?
     private(set) var monitoringMode: BuildMonitoringMode = .singleApp
     private(set) var buildRuns: [BuildRunSummary] = []
+    private(set) var workflows: [CIWorkflowSummary] = []
     private(set) var isLoadingApps = false
     private(set) var isLoadingBuildRuns = false
+    private(set) var isLoadingWorkflows = false
+    private(set) var isTriggeringBuild = false
     private(set) var errorMessage: String?
     private(set) var appSelectionMessage: String?
+    private(set) var buildTriggerMessage: String?
     private(set) var lastUpdated: Date?
     private(set) var hasLoadedInitialState = false
 
@@ -210,6 +214,8 @@ final class BuildFeedStore {
         if mode == .singleApp, selectedApp == nil, let first = availableApps.first {
             selectedApp = first
             persistSelectedApp(first)
+        } else if mode == .allApps {
+            workflows = []
         }
 
         await refreshBuildRuns()
@@ -218,6 +224,7 @@ final class BuildFeedStore {
     func selectApp(_ app: ASCAppSummary) async {
         selectedApp = app
         monitoringMode = .singleApp
+        workflows = []
         persistSelectedApp(app)
         persistMonitoringMode(.singleApp)
         errorMessage = nil
@@ -227,7 +234,77 @@ final class BuildFeedStore {
     func clearSelectedApp() {
         selectedApp = nil
         buildRuns = []
+        workflows = []
         clearSelectedAppDefaults()
+    }
+
+    func loadWorkflows() async {
+        guard hasCompleteCredentials, let credentials else {
+            workflows = []
+            buildTriggerMessage = "Credentials are missing."
+            return
+        }
+
+        guard monitoringMode == .singleApp else {
+            workflows = []
+            buildTriggerMessage = "Build trigger is available in single-app mode."
+            return
+        }
+
+        guard let selectedApp else {
+            workflows = []
+            buildTriggerMessage = "Select an app in Settings first."
+            return
+        }
+
+        isLoadingWorkflows = true
+        defer { isLoadingWorkflows = false }
+
+        do {
+            workflows = try await apiClient.fetchWorkflows(
+                credentials: credentials,
+                appID: selectedApp.id
+            )
+            buildTriggerMessage = workflows.isEmpty ? "No workflows available for this app." : nil
+        } catch {
+            workflows = []
+            buildTriggerMessage = sanitizedMessage(for: error)
+        }
+    }
+
+    func triggerBuild(workflowID: String, clean: Bool) async -> Bool {
+        guard hasCompleteCredentials, let credentials else {
+            buildTriggerMessage = "Credentials are missing."
+            return false
+        }
+
+        guard monitoringMode == .singleApp else {
+            buildTriggerMessage = "Switch to single-app mode to start a build."
+            return false
+        }
+
+        guard let selectedApp else {
+            buildTriggerMessage = "Select an app in Settings first."
+            return false
+        }
+
+        isTriggeringBuild = true
+        defer { isTriggeringBuild = false }
+
+        do {
+            try await apiClient.triggerBuild(
+                credentials: credentials,
+                appID: selectedApp.id,
+                workflowID: workflowID,
+                clean: clean
+            )
+            buildTriggerMessage = "Build queued."
+            await refreshBuildRuns()
+            return true
+        } catch {
+            buildTriggerMessage = sanitizedMessage(for: error)
+            return false
+        }
     }
 
     func refreshBuildRuns() async {
@@ -331,8 +408,10 @@ final class BuildFeedStore {
             availableApps = []
             selectedApp = nil
             buildRuns = []
+            workflows = []
             clearSelectedAppDefaults()
             errorMessage = "Credentials are missing."
+            buildTriggerMessage = "Credentials are missing."
             stopAutoRefresh()
             return
         }

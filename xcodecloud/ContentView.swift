@@ -10,6 +10,7 @@ struct ContentView: View {
 #endif
 
     @State private var isShowingSettings = false
+    @State private var isShowingBuildTrigger = false
 
     var body: some View {
         NavigationStack {
@@ -25,6 +26,19 @@ struct ContentView: View {
                         Label("Refresh", systemImage: "arrow.clockwise")
                     }
                     .disabled(buildFeedStore.isLoadingBuildRuns)
+                }
+
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        isShowingBuildTrigger = true
+                    } label: {
+                        Label("Run Build", systemImage: "play.circle")
+                    }
+                    .disabled(
+                        !buildFeedStore.hasCompleteCredentials ||
+                        buildFeedStore.selectedApp == nil ||
+                        buildFeedStore.isMonitoringAllApps
+                    )
                 }
 
                 ToolbarItem(placement: .primaryAction) {
@@ -64,6 +78,10 @@ struct ContentView: View {
             }
         }
 #endif
+        .sheet(isPresented: $isShowingBuildTrigger) {
+            BuildTriggerSheetView()
+                .environment(buildFeedStore)
+        }
     }
 
     private func openSettings() {

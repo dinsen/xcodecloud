@@ -4,6 +4,8 @@ protocol AppStoreConnectAPI {
     func testConnection(credentials: AppStoreConnectCredentials) async throws
     func fetchApps(credentials: AppStoreConnectCredentials) async throws -> [ASCAppSummary]
     func fetchLatestBuildRuns(credentials: AppStoreConnectCredentials, appID: String, limit: Int) async throws -> [BuildRunSummary]
+    func fetchWorkflows(credentials: AppStoreConnectCredentials, appID: String) async throws -> [CIWorkflowSummary]
+    func triggerBuild(credentials: AppStoreConnectCredentials, appID: String, workflowID: String, clean: Bool) async throws
 }
 
 actor AppStoreConnectClient: AppStoreConnectAPI {
@@ -121,6 +123,74 @@ actor AppStoreConnectClient: AppStoreConnectAPI {
                 let rhsDate = rhs.timestamp ?? .distantPast
                 return lhsDate > rhsDate
             }
+    }
+
+    func fetchWorkflows(credentials: AppStoreConnectCredentials, appID: String) async throws -> [CIWorkflowSummary] {
+        let token = try makeToken(from: credentials)
+        let productID = try await fetchCIProductID(token: token, appID: appID)
+        let request = try ASCRequestBuilder.makeWorkflowsRequest(token: token, productID: productID)
+        let data = try await performRequest(request)
+        let response = try decoder.decode(WorkflowListResponse.self, from: data)
+
+        var repositoryNames: [String: String] = [:]
+        var xcodeNames: [String: String] = [:]
+        var macOSNames: [String: String] = [:]
+
+        for resource in response.included ?? [] {
+            if resource.type == "scmRepositories" {
+                let owner = resource.attributes?.ownerName ?? ""
+                let name = resource.attributes?.repositoryName ?? ""
+                let display = [owner, name]
+                    .filter { !$0.isEmpty }
+                    .joined(separator: "/")
+                if !display.isEmpty {
+                    repositoryNames[resource.id] = display
+                }
+            } else if resource.type == "ciXcodeVersions" {
+                if let name = resource.attributes?.name {
+                    xcodeNames[resource.id] = name
+                } else if let version = resource.attributes?.version {
+                    xcodeNames[resource.id] = version
+                }
+            } else if resource.type == "ciMacOsVersions" {
+                if let name = resource.attributes?.name {
+                    macOSNames[resource.id] = name
+                } else if let version = resource.attributes?.version {
+                    macOSNames[resource.id] = version
+                }
+            }
+        }
+
+        return response.data
+            .map { workflow in
+                let repositoryID = workflow.relationships?.repository?.data?.id
+                let xcodeVersionID = workflow.relationships?.xcodeVersion?.data?.id
+                let macOSVersionID = workflow.relationships?.macOsVersion?.data?.id
+
+                return CIWorkflowSummary(
+                    id: workflow.id,
+                    name: workflow.attributes.name,
+                    isEnabled: workflow.attributes.isEnabled ?? false,
+                    isLockedForEditing: workflow.attributes.isLockedForEditing ?? false,
+                    cleanByDefault: workflow.attributes.clean ?? false,
+                    repositoryName: repositoryID.flatMap { repositoryNames[$0] },
+                    xcodeVersion: xcodeVersionID.flatMap { xcodeNames[$0] },
+                    macOSVersion: macOSVersionID.flatMap { macOSNames[$0] },
+                    lastModifiedDate: workflow.attributes.lastModifiedDate
+                )
+            }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    func triggerBuild(credentials: AppStoreConnectCredentials, appID: String, workflowID: String, clean: Bool) async throws {
+        let token = try makeToken(from: credentials)
+        _ = try await fetchCIProductID(token: token, appID: appID)
+        let request = try ASCRequestBuilder.makeCreateBuildRunRequest(
+            token: token,
+            workflowID: workflowID,
+            clean: clean
+        )
+        _ = try await performRequest(request)
     }
 
     private func fetchCIProductID(token: String, appID: String) async throws -> String {
@@ -306,6 +376,44 @@ private nonisolated struct BuildRunIncludedResource: Decodable {
     let id: String
     let type: String
     let attributes: IncludedAttributes?
+}
+
+private nonisolated struct WorkflowListResponse: Decodable {
+    let data: [WorkflowResource]
+    let included: [WorkflowIncludedResource]?
+}
+
+private nonisolated struct WorkflowResource: Decodable {
+    let id: String
+    let attributes: WorkflowAttributes
+    let relationships: WorkflowRelationships?
+}
+
+private nonisolated struct WorkflowAttributes: Decodable {
+    let name: String
+    let isEnabled: Bool?
+    let isLockedForEditing: Bool?
+    let clean: Bool?
+    let lastModifiedDate: Date?
+}
+
+private nonisolated struct WorkflowRelationships: Decodable {
+    let repository: RelationshipContainer?
+    let xcodeVersion: RelationshipContainer?
+    let macOsVersion: RelationshipContainer?
+}
+
+private nonisolated struct WorkflowIncludedResource: Decodable {
+    let id: String
+    let type: String
+    let attributes: WorkflowIncludedAttributes?
+}
+
+private nonisolated struct WorkflowIncludedAttributes: Decodable {
+    let name: String?
+    let version: String?
+    let ownerName: String?
+    let repositoryName: String?
 }
 
 private nonisolated struct IncludedAttributes: Decodable {
