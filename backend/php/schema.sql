@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS xcc_running_builds (
+  build_id VARCHAR(128) NOT NULL PRIMARY KEY,
+  app_id VARCHAR(128) NOT NULL,
+  workflow_id VARCHAR(128) NULL,
+  started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_app_id (app_id),
+  KEY idx_updated_at (updated_at)
+);
