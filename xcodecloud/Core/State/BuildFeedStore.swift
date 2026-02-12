@@ -52,14 +52,10 @@ final class BuildFeedStore {
     }
 
     var isMonitoringAllApps: Bool {
-        monitoringMode == .allApps
+        true
     }
 
     var monitoredAppDescription: String {
-        if monitoringMode == .allApps {
-            return "All apps"
-        }
-
         return selectedApp?.displayName ?? "Not selected"
     }
 
@@ -190,7 +186,7 @@ final class BuildFeedStore {
 
         await loadApps()
 
-        if monitoringMode == .allApps || selectedApp != nil {
+        if selectedApp != nil {
             await refreshBuildRuns()
         }
     }
@@ -277,12 +273,6 @@ final class BuildFeedStore {
             return
         }
 
-        guard monitoringMode == .singleApp else {
-            workflows = []
-            buildTriggerMessage = "Build trigger is available in single-app mode."
-            return
-        }
-
         guard let selectedApp else {
             workflows = []
             buildTriggerMessage = "Select an app in Settings first."
@@ -311,11 +301,6 @@ final class BuildFeedStore {
     func triggerBuild(workflowID: String, clean: Bool) async -> Bool {
         guard hasCompleteCredentials, let credentials else {
             buildTriggerMessage = "Credentials are missing."
-            return false
-        }
-
-        guard monitoringMode == .singleApp else {
-            buildTriggerMessage = "Switch to single-app mode to start a build."
             return false
         }
 
@@ -349,11 +334,6 @@ final class BuildFeedStore {
             return false
         }
 
-        guard monitoringMode == .singleApp else {
-            workflowManagementMessage = "Switch to single-app mode to manage workflows."
-            return false
-        }
-
         isManagingWorkflows = true
         defer { isManagingWorkflows = false }
 
@@ -378,11 +358,6 @@ final class BuildFeedStore {
             return false
         }
 
-        guard monitoringMode == .singleApp else {
-            workflowManagementMessage = "Switch to single-app mode to manage workflows."
-            return false
-        }
-
         isManagingWorkflows = true
         defer { isManagingWorkflows = false }
 
@@ -404,11 +379,6 @@ final class BuildFeedStore {
     func duplicateWorkflow(workflowID: String, newName: String) async -> Bool {
         guard hasCompleteCredentials, let credentials else {
             workflowManagementMessage = "Credentials are missing."
-            return false
-        }
-
-        guard monitoringMode == .singleApp else {
-            workflowManagementMessage = "Switch to single-app mode to manage workflows."
             return false
         }
 
@@ -473,9 +443,9 @@ final class BuildFeedStore {
             return
         }
 
-        guard monitoringMode == .singleApp, let selectedApp else {
+        guard let selectedApp else {
             repositories = []
-            repositoryMessage = "Switch to single-app mode and select an app."
+            repositoryMessage = "Select an app in Settings first."
             return
         }
 
@@ -504,66 +474,49 @@ final class BuildFeedStore {
         isLoadingBuildRuns = true
         defer { isLoadingBuildRuns = false }
 
-        do {
-            let runs: [BuildRunSummary]
+        guard selectedApp != nil else {
+            errorMessage = "Select an app in Settings to load build runs."
+            buildRuns = []
+            return
+        }
 
-            if monitoringMode == .allApps {
-                if availableApps.isEmpty {
-                    await loadApps()
-                }
+        if availableApps.isEmpty {
+            await loadApps()
+        }
 
-                let appsToMonitor = availableApps
-                guard !appsToMonitor.isEmpty else {
-                    errorMessage = "No apps are available for these credentials."
-                    buildRuns = []
-                    return
-                }
+        let appsToMonitor = availableApps
+        guard !appsToMonitor.isEmpty else {
+            errorMessage = "No apps are available for these credentials."
+            buildRuns = []
+            return
+        }
 
-                var mergedRuns: [BuildRunSummary] = []
-                var partialErrors: [String] = []
+        var mergedRuns: [BuildRunSummary] = []
+        var partialErrors: [String] = []
 
-                for app in appsToMonitor {
-                    do {
-                        let appRuns = try await apiClient.fetchLatestBuildRuns(
-                            credentials: credentials,
-                            appID: app.id,
-                            limit: 20
-                        )
-                        mergedRuns.append(contentsOf: appRuns.map { $0.withApp(app) })
-                    } catch {
-                        partialErrors.append("\(app.name): \(sanitizedMessage(for: error))")
-                    }
-                }
-
-                runs = mergedRuns.sorted(by: Self.sortRuns)
-
-                if !partialErrors.isEmpty {
-                    errorMessage = "Some apps could not be refreshed."
-                } else {
-                    errorMessage = nil
-                }
-            } else {
-                guard let selectedApp else {
-                    errorMessage = "Select an app in Settings to load build runs."
-                    buildRuns = []
-                    return
-                }
-
-                runs = try await apiClient.fetchLatestBuildRuns(
+        for app in appsToMonitor {
+            do {
+                let appRuns = try await apiClient.fetchLatestBuildRuns(
                     credentials: credentials,
-                    appID: selectedApp.id,
+                    appID: app.id,
                     limit: 20
                 )
-                .map { $0.withApp(selectedApp) }
-
-                errorMessage = nil
+                mergedRuns.append(contentsOf: appRuns.map { $0.withApp(app) })
+            } catch {
+                partialErrors.append("\(app.name): \(sanitizedMessage(for: error))")
             }
-
-            buildRuns = runs
-            lastUpdated = Date()
-        } catch {
-            errorMessage = sanitizedMessage(for: error)
         }
+
+        let runs = mergedRuns.sorted(by: Self.sortRuns)
+
+        if !partialErrors.isEmpty {
+            errorMessage = "Some apps could not be refreshed."
+        } else {
+            errorMessage = nil
+        }
+
+        buildRuns = runs
+        lastUpdated = Date()
     }
 
     func configureAutoRefresh(enabled: Bool, intervalSeconds: TimeInterval) {
@@ -609,7 +562,7 @@ final class BuildFeedStore {
 
         await loadApps()
 
-        if monitoringMode == .allApps || selectedApp != nil {
+        if selectedApp != nil {
             await refreshBuildRuns()
         }
     }

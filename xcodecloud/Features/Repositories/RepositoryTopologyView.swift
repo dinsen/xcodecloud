@@ -13,12 +13,7 @@ struct RepositoryTopologyView: View {
 
     var body: some View {
         List {
-            if buildFeedStore.monitoringMode == .allApps {
-                Section {
-                    Text("Switch to Single App mode in Settings to view repository topology.")
-                        .foregroundStyle(.secondary)
-                }
-            } else if buildFeedStore.isLoadingRepositories {
+            if buildFeedStore.isLoadingRepositories {
                 Section {
                     ProgressView("Loading repositories...")
                 }

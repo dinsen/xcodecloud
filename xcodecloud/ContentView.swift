@@ -36,8 +36,7 @@ struct ContentView: View {
                     }
                     .disabled(
                         !buildFeedStore.hasCompleteCredentials ||
-                        buildFeedStore.selectedApp == nil ||
-                        buildFeedStore.isMonitoringAllApps
+                        buildFeedStore.selectedApp == nil
                     )
                 }
 

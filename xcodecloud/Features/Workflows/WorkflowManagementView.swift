@@ -9,12 +9,7 @@ struct WorkflowManagementView: View {
 
     var body: some View {
         List {
-            if buildFeedStore.monitoringMode == .allApps {
-                Section {
-                    Text("Switch to Single App mode in Settings to manage workflows.")
-                        .foregroundStyle(.secondary)
-                }
-            } else if buildFeedStore.isLoadingWorkflows {
+            if buildFeedStore.isLoadingWorkflows {
                 Section {
                     ProgressView("Loading workflows...")
                 }

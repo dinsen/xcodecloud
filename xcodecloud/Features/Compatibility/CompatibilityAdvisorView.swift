@@ -5,19 +5,12 @@ struct CompatibilityAdvisorView: View {
 
     var body: some View {
         List {
-            if buildFeedStore.monitoringMode == .allApps {
-                Section {
-                    Text("Switch to Single App mode in Settings to review workflow compatibility.")
-                        .foregroundStyle(.secondary)
-                }
-            }
-
             if buildFeedStore.isLoadingCompatibility {
                 Section {
                     ProgressView("Loading compatibility matrix...")
                 }
             } else if let matrix = buildFeedStore.compatibilityMatrix {
-                if buildFeedStore.monitoringMode == .singleApp, !buildFeedStore.workflows.isEmpty {
+                if !buildFeedStore.workflows.isEmpty {
                     Section("Current Workflows") {
                         ForEach(buildFeedStore.workflows) { workflow in
                             VStack(alignment: .leading, spacing: 6) {
@@ -73,7 +66,7 @@ struct CompatibilityAdvisorView: View {
         .navigationTitle("Compatibility")
         .task {
             await buildFeedStore.loadCompatibilityMatrix()
-            if buildFeedStore.monitoringMode == .singleApp, buildFeedStore.workflows.isEmpty {
+            if buildFeedStore.workflows.isEmpty {
                 await buildFeedStore.loadWorkflows()
             }
         }
