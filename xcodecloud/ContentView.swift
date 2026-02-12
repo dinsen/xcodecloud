@@ -4,6 +4,9 @@ struct ContentView: View {
     @Environment(BuildFeedStore.self) private var buildFeedStore
     @AppStorage("autoRefreshEnabled") private var autoRefreshEnabled = true
     @AppStorage("autoRefreshIntervalSeconds") private var autoRefreshIntervalSeconds: Double = 60
+    @AppStorage("liveStatusEnabled") private var liveStatusEnabled = false
+    @AppStorage("liveStatusEndpointURL") private var liveStatusEndpointURL = ""
+    @AppStorage("liveStatusPollIntervalSeconds") private var liveStatusPollIntervalSeconds: Double = 30
 
 #if os(macOS)
     @Environment(\.openSettings) private var openSettingsAction
@@ -56,6 +59,11 @@ struct ContentView: View {
                 enabled: autoRefreshEnabled,
                 intervalSeconds: autoRefreshIntervalSeconds
             )
+            buildFeedStore.configureLiveStatusPolling(
+                enabled: liveStatusEnabled,
+                endpoint: liveStatusEndpointURL,
+                intervalSeconds: liveStatusPollIntervalSeconds
+            )
         }
         .onChange(of: autoRefreshEnabled) { _, isEnabled in
             buildFeedStore.configureAutoRefresh(
@@ -66,6 +74,27 @@ struct ContentView: View {
         .onChange(of: autoRefreshIntervalSeconds) { _, newInterval in
             buildFeedStore.configureAutoRefresh(
                 enabled: autoRefreshEnabled,
+                intervalSeconds: newInterval
+            )
+        }
+        .onChange(of: liveStatusEnabled) { _, isEnabled in
+            buildFeedStore.configureLiveStatusPolling(
+                enabled: isEnabled,
+                endpoint: liveStatusEndpointURL,
+                intervalSeconds: liveStatusPollIntervalSeconds
+            )
+        }
+        .onChange(of: liveStatusEndpointURL) { _, newEndpoint in
+            buildFeedStore.configureLiveStatusPolling(
+                enabled: liveStatusEnabled,
+                endpoint: newEndpoint,
+                intervalSeconds: liveStatusPollIntervalSeconds
+            )
+        }
+        .onChange(of: liveStatusPollIntervalSeconds) { _, newInterval in
+            buildFeedStore.configureLiveStatusPolling(
+                enabled: liveStatusEnabled,
+                endpoint: liveStatusEndpointURL,
                 intervalSeconds: newInterval
             )
         }

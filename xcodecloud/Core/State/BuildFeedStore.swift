@@ -44,6 +44,9 @@ final class BuildFeedStore {
     private(set) var workflowManagementMessage: String?
     private(set) var compatibilityMessage: String?
     private(set) var repositoryMessage: String?
+    private(set) var liveStatus: CIRunningBuildStatus?
+    private(set) var liveStatusMessage: String?
+    private(set) var isPollingLiveStatus = false
     private(set) var lastUpdated: Date?
     private(set) var hasLoadedInitialState = false
 
@@ -138,17 +141,24 @@ final class BuildFeedStore {
 
     private let credentialsStore: CredentialsStore
     private let apiClient: any AppStoreConnectAPI
+    private let liveStatusClient: any CIRunningBuildStatusAPI
+    private let liveActivityManager: any BuildLiveActivityManaging
     private let userDefaults: UserDefaults
 
     private var autoRefreshTask: Task<Void, Never>?
+    private var liveStatusTask: Task<Void, Never>?
 
     init(
         credentialsStore: CredentialsStore,
         apiClient: any AppStoreConnectAPI,
+        liveStatusClient: any CIRunningBuildStatusAPI,
+        liveActivityManager: any BuildLiveActivityManaging,
         userDefaults: UserDefaults
     ) {
         self.credentialsStore = credentialsStore
         self.apiClient = apiClient
+        self.liveStatusClient = liveStatusClient
+        self.liveActivityManager = liveActivityManager
         self.userDefaults = userDefaults
 
         reloadCredentials()
@@ -171,6 +181,8 @@ final class BuildFeedStore {
         self.init(
             credentialsStore: KeychainCredentialsStore(),
             apiClient: AppStoreConnectClient(),
+            liveStatusClient: CIRunningBuildStatusClient(),
+            liveActivityManager: BuildLiveActivityManager(),
             userDefaults: .standard
         )
     }
@@ -252,6 +264,8 @@ final class BuildFeedStore {
         monitoringMode = .singleApp
         workflows = []
         repositories = []
+        liveStatus = nil
+        liveStatusMessage = nil
         persistSelectedApp(app)
         persistMonitoringMode(.singleApp)
         errorMessage = nil
@@ -263,7 +277,12 @@ final class BuildFeedStore {
         buildRuns = []
         workflows = []
         repositories = []
+        liveStatus = nil
+        liveStatusMessage = nil
         clearSelectedAppDefaults()
+        Task { [weak self] in
+            await self?.liveActivityManager.end()
+        }
     }
 
     func loadWorkflows() async {
@@ -543,6 +562,80 @@ final class BuildFeedStore {
         autoRefreshTask = nil
     }
 
+    func configureLiveStatusPolling(enabled: Bool, endpoint: String, intervalSeconds: TimeInterval) {
+        liveStatusTask?.cancel()
+        liveStatusTask = nil
+        isPollingLiveStatus = false
+
+        guard enabled else {
+            liveStatusMessage = nil
+            Task { [weak self] in
+                await self?.liveActivityManager.end()
+            }
+            return
+        }
+
+        guard let endpointURL = URL(string: endpoint),
+              let scheme = endpointURL.scheme?.lowercased(),
+              scheme == "https" || scheme == "http" else {
+            liveStatus = nil
+            liveStatusMessage = "Set a valid status endpoint URL."
+            return
+        }
+
+        let interval = max(10, intervalSeconds)
+        isPollingLiveStatus = true
+
+        liveStatusTask = Task { [weak self] in
+            guard let self else { return }
+
+            await self.refreshLiveStatus(endpointURL: endpointURL)
+
+            while !Task.isCancelled {
+                let nanoseconds = UInt64(interval * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: nanoseconds)
+
+                guard !Task.isCancelled else { return }
+                await self.refreshLiveStatus(endpointURL: endpointURL)
+            }
+        }
+    }
+
+    func stopLiveStatusPolling() {
+        liveStatusTask?.cancel()
+        liveStatusTask = nil
+        isPollingLiveStatus = false
+        Task { [weak self] in
+            await self?.liveActivityManager.end()
+        }
+    }
+
+    private func refreshLiveStatus(endpointURL: URL) async {
+        guard let selectedApp else {
+            liveStatus = nil
+            liveStatusMessage = "Select an app in Settings first."
+            await liveActivityManager.end()
+            return
+        }
+
+        do {
+            let status = try await liveStatusClient.fetchStatus(
+                endpointURL: endpointURL,
+                appID: selectedApp.id
+            )
+            liveStatus = status
+            liveStatusMessage = nil
+
+            await liveActivityManager.update(
+                appID: selectedApp.id,
+                appName: selectedApp.name,
+                runningCount: status.runningCount
+            )
+        } catch {
+            liveStatusMessage = sanitizedMessage(for: error)
+        }
+    }
+
     private func reloadAfterCredentialUpdate() async {
         if !hasCompleteCredentials {
             availableApps = []
@@ -557,6 +650,7 @@ final class BuildFeedStore {
             compatibilityMessage = "Credentials are missing."
             repositoryMessage = "Credentials are missing."
             stopAutoRefresh()
+            stopLiveStatusPolling()
             return
         }
 
@@ -606,6 +700,10 @@ final class BuildFeedStore {
 
     func sanitizedMessage(for error: Error) -> String {
         if let known = error as? AppStoreConnectClientError {
+            return known.localizedDescription
+        }
+
+        if let known = error as? CIRunningBuildStatusClientError {
             return known.localizedDescription
         }
 

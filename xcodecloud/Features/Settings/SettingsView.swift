@@ -6,6 +6,9 @@ struct SettingsView: View {
 
     @AppStorage("autoRefreshEnabled") private var autoRefreshEnabled = true
     @AppStorage("autoRefreshIntervalSeconds") private var autoRefreshIntervalSeconds: Double = 60
+    @AppStorage("liveStatusEnabled") private var liveStatusEnabled = false
+    @AppStorage("liveStatusEndpointURL") private var liveStatusEndpointURL = ""
+    @AppStorage("liveStatusPollIntervalSeconds") private var liveStatusPollIntervalSeconds: Double = 30
 
     var body: some View {
         Form {
@@ -106,12 +109,66 @@ struct SettingsView: View {
                 }
                 .disabled(!buildFeedStore.hasCompleteCredentials)
             }
+
+            Section("Live Activity") {
+                Toggle("Enable Build Live Activity", isOn: $liveStatusEnabled)
+
+                #if os(iOS)
+                TextField("Status endpoint URL", text: $liveStatusEndpointURL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                #else
+                TextField("Status endpoint URL", text: $liveStatusEndpointURL)
+                #endif
+
+                HStack {
+                    Text("Poll Interval")
+                    Spacer()
+                    Text("\(Int(liveStatusPollIntervalSeconds))s")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+
+                Slider(
+                    value: $liveStatusPollIntervalSeconds,
+                    in: 10...120,
+                    step: 5
+                )
+                .disabled(!liveStatusEnabled)
+
+                if let status = buildFeedStore.liveStatus {
+                    HStack {
+                        Text("Running Builds")
+                        Spacer()
+                        Text("\(status.runningCount)")
+                            .monospacedDigit()
+                    }
+
+                    if let checkedAt = status.checkedAt {
+                        Text("Last checked \(checkedAt.shortDateTimeString())")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if let liveStatusMessage = buildFeedStore.liveStatusMessage {
+                    Text(liveStatusMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .navigationTitle("Settings")
         .task {
             if buildFeedStore.hasCompleteCredentials && buildFeedStore.availableApps.isEmpty {
                 await buildFeedStore.loadApps()
             }
+
+            buildFeedStore.configureLiveStatusPolling(
+                enabled: liveStatusEnabled,
+                endpoint: liveStatusEndpointURL,
+                intervalSeconds: liveStatusPollIntervalSeconds
+            )
         }
         .onChange(of: autoRefreshEnabled) { _, isEnabled in
             buildFeedStore.configureAutoRefresh(
@@ -122,6 +179,27 @@ struct SettingsView: View {
         .onChange(of: autoRefreshIntervalSeconds) { _, newInterval in
             buildFeedStore.configureAutoRefresh(
                 enabled: autoRefreshEnabled,
+                intervalSeconds: newInterval
+            )
+        }
+        .onChange(of: liveStatusEnabled) { _, isEnabled in
+            buildFeedStore.configureLiveStatusPolling(
+                enabled: isEnabled,
+                endpoint: liveStatusEndpointURL,
+                intervalSeconds: liveStatusPollIntervalSeconds
+            )
+        }
+        .onChange(of: liveStatusEndpointURL) { _, newEndpoint in
+            buildFeedStore.configureLiveStatusPolling(
+                enabled: liveStatusEnabled,
+                endpoint: newEndpoint,
+                intervalSeconds: liveStatusPollIntervalSeconds
+            )
+        }
+        .onChange(of: liveStatusPollIntervalSeconds) { _, newInterval in
+            buildFeedStore.configureLiveStatusPolling(
+                enabled: liveStatusEnabled,
+                endpoint: liveStatusEndpointURL,
                 intervalSeconds: newInterval
             )
         }
