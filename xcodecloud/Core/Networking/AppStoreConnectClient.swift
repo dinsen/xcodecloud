@@ -11,6 +11,7 @@ protocol AppStoreConnectAPI {
     func deleteWorkflow(credentials: AppStoreConnectCredentials, workflowID: String) async throws
     func duplicateWorkflow(credentials: AppStoreConnectCredentials, workflowID: String, newName: String) async throws
     func fetchCompatibilityMatrix(credentials: AppStoreConnectCredentials) async throws -> CICompatibilityMatrix
+    func fetchRepositories(credentials: AppStoreConnectCredentials, appID: String) async throws -> [CIRepositorySummary]
 }
 
 actor AppStoreConnectClient: AppStoreConnectAPI {
@@ -383,6 +384,41 @@ actor AppStoreConnectClient: AppStoreConnectAPI {
         return CICompatibilityMatrix(xcodeVersions: xcodeVersions)
     }
 
+    func fetchRepositories(credentials: AppStoreConnectCredentials, appID: String) async throws -> [CIRepositorySummary] {
+        let token = try makeToken(from: credentials)
+        let productID = try await fetchCIProductID(token: token, appID: appID)
+
+        async let primaryDataTask: Data = {
+            let request = try ASCRequestBuilder.makePrimaryRepositoriesRequest(token: token, productID: productID)
+            return try await performRequest(request)
+        }()
+
+        async let additionalDataTask: Data = {
+            let request = try ASCRequestBuilder.makeAdditionalRepositoriesRequest(token: token, productID: productID)
+            return try await performRequest(request)
+        }()
+
+        let primaryData = try await primaryDataTask
+        let additionalData = try await additionalDataTask
+
+        let primaryResponse = try decoder.decode(ScmRepositoryListResponse.self, from: primaryData)
+        let additionalResponse = try decoder.decode(ScmRepositoryListResponse.self, from: additionalData)
+
+        let primary = primaryResponse.data.map { repository in
+            mapRepository(repository, isPrimary: true)
+        }
+        let additional = additionalResponse.data.map { repository in
+            mapRepository(repository, isPrimary: false)
+        }
+
+        return (primary + additional).sorted { lhs, rhs in
+            if lhs.isPrimary != rhs.isPrimary {
+                return lhs.isPrimary && !rhs.isPrimary
+            }
+            return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+        }
+    }
+
     private func fetchIssues(token: String, actionID: String) async throws -> [BuildIssueDiagnostics] {
         let request = try ASCRequestBuilder.makeBuildActionIssuesRequest(token: token, actionID: actionID)
         let data = try await performRequest(request)
@@ -474,6 +510,26 @@ actor AppStoreConnectClient: AppStoreConnectAPI {
         let raw = String(scalarView)
         let collapsed = raw.replacingOccurrences(of: "-+", with: "-", options: .regularExpression)
         return collapsed.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+    }
+
+    private func mapRepository(_ resource: ScmRepositoryResource, isPrimary: Bool) -> CIRepositorySummary {
+        let owner = resource.attributes.ownerName
+        let name = resource.attributes.repositoryName
+        let displayName = [owner, name]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: "/")
+
+        return CIRepositorySummary(
+            id: resource.id,
+            displayName: displayName.isEmpty ? resource.id : displayName,
+            ownerName: owner,
+            repositoryName: name,
+            provider: resource.attributes.scmProvider,
+            defaultBranch: resource.attributes.defaultBranch,
+            lastAccessedDate: resource.attributes.lastAccessedDate,
+            isPrimary: isPrimary
+        )
     }
 
     private func fetchCIProductID(token: String, appID: String) async throws -> String {
@@ -801,6 +857,23 @@ private nonisolated struct VersionAttributes: Decodable {
 
 private nonisolated struct ToManyRelationshipContainer: Decodable {
     let data: [RelationshipData]?
+}
+
+private nonisolated struct ScmRepositoryListResponse: Decodable {
+    let data: [ScmRepositoryResource]
+}
+
+private nonisolated struct ScmRepositoryResource: Decodable {
+    let id: String
+    let attributes: ScmRepositoryAttributes
+}
+
+private nonisolated struct ScmRepositoryAttributes: Decodable {
+    let ownerName: String?
+    let repositoryName: String?
+    let scmProvider: String?
+    let defaultBranch: String?
+    let lastAccessedDate: Date?
 }
 
 private nonisolated struct IncludedAttributes: Decodable {

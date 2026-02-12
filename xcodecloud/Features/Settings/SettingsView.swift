@@ -108,6 +108,17 @@ struct SettingsView: View {
                     }
                 }
                 .disabled(!buildFeedStore.hasCompleteCredentials)
+
+                NavigationLink {
+                    RepositoryTopologyView()
+                } label: {
+                    HStack {
+                        Image(systemName: "point.3.connected.trianglepath.dotted")
+                            .foregroundStyle(.secondary)
+                        Text("Repositories")
+                    }
+                }
+                .disabled(!buildFeedStore.hasCompleteCredentials)
             }
         }
         .navigationTitle("Settings")

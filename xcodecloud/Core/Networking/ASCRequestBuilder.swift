@@ -161,6 +161,20 @@ struct ASCRequestBuilder {
         ])
     }
 
+    nonisolated static func makePrimaryRepositoriesRequest(token: String, productID: String, limit: Int = 200) throws -> URLRequest {
+        try makeRequest(path: "/v1/ciProducts/\(productID)/primaryRepositories", token: token, queryItems: [
+            URLQueryItem(name: "limit", value: "\(max(1, min(limit, 200)))"),
+            URLQueryItem(name: "fields[scmRepositories]", value: "ownerName,repositoryName,scmProvider,defaultBranch,lastAccessedDate"),
+        ])
+    }
+
+    nonisolated static func makeAdditionalRepositoriesRequest(token: String, productID: String, limit: Int = 200) throws -> URLRequest {
+        try makeRequest(path: "/v1/ciProducts/\(productID)/additionalRepositories", token: token, queryItems: [
+            URLQueryItem(name: "limit", value: "\(max(1, min(limit, 200)))"),
+            URLQueryItem(name: "fields[scmRepositories]", value: "ownerName,repositoryName,scmProvider,defaultBranch,lastAccessedDate"),
+        ])
+    }
+
     private nonisolated static func makeRequest(
         path: String,
         token: String,

@@ -30,17 +30,20 @@ final class BuildFeedStore {
     private(set) var buildRuns: [BuildRunSummary] = []
     private(set) var workflows: [CIWorkflowSummary] = []
     private(set) var compatibilityMatrix: CICompatibilityMatrix?
+    private(set) var repositories: [CIRepositorySummary] = []
     private(set) var isLoadingApps = false
     private(set) var isLoadingBuildRuns = false
     private(set) var isLoadingWorkflows = false
     private(set) var isTriggeringBuild = false
     private(set) var isManagingWorkflows = false
     private(set) var isLoadingCompatibility = false
+    private(set) var isLoadingRepositories = false
     private(set) var errorMessage: String?
     private(set) var appSelectionMessage: String?
     private(set) var buildTriggerMessage: String?
     private(set) var workflowManagementMessage: String?
     private(set) var compatibilityMessage: String?
+    private(set) var repositoryMessage: String?
     private(set) var lastUpdated: Date?
     private(set) var hasLoadedInitialState = false
 
@@ -221,6 +224,7 @@ final class BuildFeedStore {
             persistSelectedApp(first)
         } else if mode == .allApps {
             workflows = []
+            repositories = []
         }
 
         await refreshBuildRuns()
@@ -230,6 +234,7 @@ final class BuildFeedStore {
         selectedApp = app
         monitoringMode = .singleApp
         workflows = []
+        repositories = []
         persistSelectedApp(app)
         persistMonitoringMode(.singleApp)
         errorMessage = nil
@@ -240,6 +245,7 @@ final class BuildFeedStore {
         selectedApp = nil
         buildRuns = []
         workflows = []
+        repositories = []
         clearSelectedAppDefaults()
     }
 
@@ -439,6 +445,34 @@ final class BuildFeedStore {
         }
     }
 
+    func loadRepositories() async {
+        guard hasCompleteCredentials, let credentials else {
+            repositories = []
+            repositoryMessage = "Credentials are missing."
+            return
+        }
+
+        guard monitoringMode == .singleApp, let selectedApp else {
+            repositories = []
+            repositoryMessage = "Switch to single-app mode and select an app."
+            return
+        }
+
+        isLoadingRepositories = true
+        defer { isLoadingRepositories = false }
+
+        do {
+            repositories = try await apiClient.fetchRepositories(
+                credentials: credentials,
+                appID: selectedApp.id
+            )
+            repositoryMessage = repositories.isEmpty ? "No repositories were returned." : nil
+        } catch {
+            repositories = []
+            repositoryMessage = sanitizedMessage(for: error)
+        }
+    }
+
     func refreshBuildRuns() async {
         guard hasCompleteCredentials, let credentials else {
             errorMessage = "Credentials are missing."
@@ -542,10 +576,12 @@ final class BuildFeedStore {
             buildRuns = []
             workflows = []
             compatibilityMatrix = nil
+            repositories = []
             clearSelectedAppDefaults()
             errorMessage = "Credentials are missing."
             buildTriggerMessage = "Credentials are missing."
             compatibilityMessage = "Credentials are missing."
+            repositoryMessage = "Credentials are missing."
             stopAutoRefresh()
             return
         }

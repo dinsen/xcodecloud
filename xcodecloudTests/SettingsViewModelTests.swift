@@ -188,4 +188,8 @@ private final class MockAppStoreConnectAPI: AppStoreConnectAPI {
     func fetchCompatibilityMatrix(credentials: AppStoreConnectCredentials) async throws -> CICompatibilityMatrix {
         CICompatibilityMatrix(xcodeVersions: [])
     }
+
+    func fetchRepositories(credentials: AppStoreConnectCredentials, appID: String) async throws -> [CIRepositorySummary] {
+        []
+    }
 }
