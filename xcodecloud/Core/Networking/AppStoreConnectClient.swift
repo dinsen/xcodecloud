@@ -10,6 +10,7 @@ protocol AppStoreConnectAPI {
     func setWorkflowEnabled(credentials: AppStoreConnectCredentials, workflowID: String, isEnabled: Bool) async throws
     func deleteWorkflow(credentials: AppStoreConnectCredentials, workflowID: String) async throws
     func duplicateWorkflow(credentials: AppStoreConnectCredentials, workflowID: String, newName: String) async throws
+    func fetchCompatibilityMatrix(credentials: AppStoreConnectCredentials) async throws -> CICompatibilityMatrix
 }
 
 actor AppStoreConnectClient: AppStoreConnectAPI {
@@ -348,6 +349,38 @@ actor AppStoreConnectClient: AppStoreConnectAPI {
         let requestData = try JSONSerialization.data(withJSONObject: requestBody, options: [])
         let request = try ASCRequestBuilder.makeWorkflowCreateRequest(token: token, body: requestData)
         _ = try await performRequest(request)
+    }
+
+    func fetchCompatibilityMatrix(credentials: AppStoreConnectCredentials) async throws -> CICompatibilityMatrix {
+        let token = try makeToken(from: credentials)
+        let request = try ASCRequestBuilder.makeCIXcodeVersionsRequest(token: token)
+        let data = try await performRequest(request)
+        let response = try decoder.decode(XcodeVersionListResponse.self, from: data)
+
+        var macOSByID: [String: String] = [:]
+        for included in response.included ?? [] {
+            let displayName = included.attributes.name ?? included.attributes.version ?? "Unknown"
+            macOSByID[included.id] = displayName
+        }
+
+        let unsorted: [CIXcodeCompatibility] = response.data.map { resource in
+            let name = resource.attributes.name ?? resource.attributes.version ?? "Unknown"
+            let macIDs = resource.relationships?.macOsVersions?.data?.map(\.id) ?? []
+            let compatible = macIDs.compactMap { macOSByID[$0] }
+                .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+
+            return CIXcodeCompatibility(
+                id: resource.id,
+                name: name,
+                version: resource.attributes.version,
+                compatibleMacOSVersions: compatible
+            )
+        }
+        let xcodeVersions = unsorted.sorted { lhs, rhs in
+            lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedDescending
+        }
+
+        return CICompatibilityMatrix(xcodeVersions: xcodeVersions)
     }
 
     private func fetchIssues(token: String, actionID: String) async throws -> [BuildIssueDiagnostics] {
@@ -739,6 +772,35 @@ private nonisolated struct BuildArtifactAttributes: Decodable {
         case fileSize
         case downloadURL = "downloadUrl"
     }
+}
+
+private nonisolated struct XcodeVersionListResponse: Decodable {
+    let data: [XcodeVersionResource]
+    let included: [MacOSVersionResource]?
+}
+
+private nonisolated struct XcodeVersionResource: Decodable {
+    let id: String
+    let attributes: VersionAttributes
+    let relationships: XcodeVersionRelationships?
+}
+
+private nonisolated struct XcodeVersionRelationships: Decodable {
+    let macOsVersions: ToManyRelationshipContainer?
+}
+
+private nonisolated struct MacOSVersionResource: Decodable {
+    let id: String
+    let attributes: VersionAttributes
+}
+
+private nonisolated struct VersionAttributes: Decodable {
+    let name: String?
+    let version: String?
+}
+
+private nonisolated struct ToManyRelationshipContainer: Decodable {
+    let data: [RelationshipData]?
 }
 
 private nonisolated struct IncludedAttributes: Decodable {

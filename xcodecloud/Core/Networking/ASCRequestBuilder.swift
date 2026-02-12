@@ -152,6 +152,15 @@ struct ASCRequestBuilder {
         )
     }
 
+    nonisolated static func makeCIXcodeVersionsRequest(token: String, limit: Int = 200) throws -> URLRequest {
+        try makeRequest(path: "/v1/ciXcodeVersions", token: token, queryItems: [
+            URLQueryItem(name: "limit", value: "\(max(1, min(limit, 200)))"),
+            URLQueryItem(name: "include", value: "macOsVersions"),
+            URLQueryItem(name: "fields[ciXcodeVersions]", value: "name,version,macOsVersions"),
+            URLQueryItem(name: "fields[ciMacOsVersions]", value: "name,version"),
+        ])
+    }
+
     private nonisolated static func makeRequest(
         path: String,
         token: String,

@@ -97,6 +97,17 @@ struct SettingsView: View {
                     }
                 }
                 .disabled(!buildFeedStore.hasCompleteCredentials)
+
+                NavigationLink {
+                    CompatibilityAdvisorView()
+                } label: {
+                    HStack {
+                        Image(systemName: "desktopcomputer")
+                            .foregroundStyle(.secondary)
+                        Text("Compatibility")
+                    }
+                }
+                .disabled(!buildFeedStore.hasCompleteCredentials)
             }
         }
         .navigationTitle("Settings")

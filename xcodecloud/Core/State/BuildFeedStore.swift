@@ -29,15 +29,18 @@ final class BuildFeedStore {
     private(set) var monitoringMode: BuildMonitoringMode = .singleApp
     private(set) var buildRuns: [BuildRunSummary] = []
     private(set) var workflows: [CIWorkflowSummary] = []
+    private(set) var compatibilityMatrix: CICompatibilityMatrix?
     private(set) var isLoadingApps = false
     private(set) var isLoadingBuildRuns = false
     private(set) var isLoadingWorkflows = false
     private(set) var isTriggeringBuild = false
     private(set) var isManagingWorkflows = false
+    private(set) var isLoadingCompatibility = false
     private(set) var errorMessage: String?
     private(set) var appSelectionMessage: String?
     private(set) var buildTriggerMessage: String?
     private(set) var workflowManagementMessage: String?
+    private(set) var compatibilityMessage: String?
     private(set) var lastUpdated: Date?
     private(set) var hasLoadedInitialState = false
 
@@ -417,6 +420,25 @@ final class BuildFeedStore {
         )
     }
 
+    func loadCompatibilityMatrix() async {
+        guard hasCompleteCredentials, let credentials else {
+            compatibilityMatrix = nil
+            compatibilityMessage = "Credentials are missing."
+            return
+        }
+
+        isLoadingCompatibility = true
+        defer { isLoadingCompatibility = false }
+
+        do {
+            compatibilityMatrix = try await apiClient.fetchCompatibilityMatrix(credentials: credentials)
+            compatibilityMessage = nil
+        } catch {
+            compatibilityMatrix = nil
+            compatibilityMessage = sanitizedMessage(for: error)
+        }
+    }
+
     func refreshBuildRuns() async {
         guard hasCompleteCredentials, let credentials else {
             errorMessage = "Credentials are missing."
@@ -519,9 +541,11 @@ final class BuildFeedStore {
             selectedApp = nil
             buildRuns = []
             workflows = []
+            compatibilityMatrix = nil
             clearSelectedAppDefaults()
             errorMessage = "Credentials are missing."
             buildTriggerMessage = "Credentials are missing."
+            compatibilityMessage = "Credentials are missing."
             stopAutoRefresh()
             return
         }

@@ -184,4 +184,8 @@ private final class MockAppStoreConnectAPI: AppStoreConnectAPI {
     func deleteWorkflow(credentials: AppStoreConnectCredentials, workflowID: String) async throws {}
 
     func duplicateWorkflow(credentials: AppStoreConnectCredentials, workflowID: String, newName: String) async throws {}
+
+    func fetchCompatibilityMatrix(credentials: AppStoreConnectCredentials) async throws -> CICompatibilityMatrix {
+        CICompatibilityMatrix(xcodeVersions: [])
+    }
 }
