@@ -499,6 +499,22 @@ final class BuildFeedStore {
             return
         }
 
+        // Fast path: one portfolio request across all apps/workflows.
+        do {
+            buildRuns = try await apiClient.fetchPortfolioBuildRuns(
+                credentials: credentials,
+                limit: 200
+            )
+            errorMessage = nil
+            lastUpdated = Date()
+            return
+        } catch {
+            // Fallback to per-app fan-out when portfolio endpoint is unavailable.
+        }
+
+        var mergedRuns: [BuildRunSummary] = []
+        var partialErrors: [String] = []
+
         if availableApps.isEmpty {
             await loadApps()
         }
@@ -509,9 +525,6 @@ final class BuildFeedStore {
             buildRuns = []
             return
         }
-
-        var mergedRuns: [BuildRunSummary] = []
-        var partialErrors: [String] = []
 
         for app in appsToMonitor {
             do {

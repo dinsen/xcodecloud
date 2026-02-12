@@ -34,6 +34,18 @@ struct ASCRequestBuilder {
         ])
     }
 
+    nonisolated static func makePortfolioBuildRunsRequest(token: String, limit: Int) throws -> URLRequest {
+        try makeRequest(path: "/v1/ciBuildRuns", token: token, queryItems: [
+            URLQueryItem(name: "limit", value: "\(max(1, min(limit, 200)))"),
+            URLQueryItem(name: "sort", value: "-createdDate"),
+            URLQueryItem(name: "include", value: "workflow,sourceBranchOrTag,product"),
+            URLQueryItem(name: "fields[ciBuildRuns]", value: "number,createdDate,startedDate,finishedDate,sourceCommit,issueCounts,executionProgress,completionStatus,workflow,sourceBranchOrTag,product"),
+            URLQueryItem(name: "fields[ciWorkflows]", value: "name"),
+            URLQueryItem(name: "fields[scmGitReferences]", value: "name,canonicalName"),
+            URLQueryItem(name: "fields[ciProducts]", value: "name,bundleId"),
+        ])
+    }
+
     nonisolated static func makeWorkflowsRequest(token: String, productID: String, limit: Int = 200) throws -> URLRequest {
         try makeRequest(path: "/v1/ciProducts/\(productID)/workflows", token: token, queryItems: [
             URLQueryItem(name: "limit", value: "\(max(1, min(limit, 200)))"),

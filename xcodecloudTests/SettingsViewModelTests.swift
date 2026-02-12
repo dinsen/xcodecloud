@@ -165,6 +165,10 @@ private final class MockAppStoreConnectAPI: AppStoreConnectAPI {
         []
     }
 
+    func fetchPortfolioBuildRuns(credentials: AppStoreConnectCredentials, limit: Int) async throws -> [BuildRunSummary] {
+        []
+    }
+
     func fetchLatestBuildRuns(credentials: AppStoreConnectCredentials, appID: String, limit: Int) async throws -> [BuildRunSummary] {
         []
     }

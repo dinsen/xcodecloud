@@ -3,6 +3,7 @@ import Foundation
 protocol AppStoreConnectAPI {
     func testConnection(credentials: AppStoreConnectCredentials) async throws
     func fetchApps(credentials: AppStoreConnectCredentials) async throws -> [ASCAppSummary]
+    func fetchPortfolioBuildRuns(credentials: AppStoreConnectCredentials, limit: Int) async throws -> [BuildRunSummary]
     func fetchLatestBuildRuns(credentials: AppStoreConnectCredentials, appID: String, limit: Int) async throws -> [BuildRunSummary]
     func fetchWorkflows(credentials: AppStoreConnectCredentials, appID: String) async throws -> [CIWorkflowSummary]
     func triggerBuild(credentials: AppStoreConnectCredentials, appID: String, workflowID: String, clean: Bool) async throws
@@ -55,6 +56,14 @@ actor AppStoreConnectClient: AppStoreConnectAPI {
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
+    func fetchPortfolioBuildRuns(credentials: AppStoreConnectCredentials, limit: Int) async throws -> [BuildRunSummary] {
+        let token = try makeToken(from: credentials)
+        let request = try ASCRequestBuilder.makePortfolioBuildRunsRequest(token: token, limit: limit)
+        let data = try await performRequest(request)
+        let response = try decoder.decode(BuildRunListResponse.self, from: data)
+        return mapBuildRuns(response, sortByBuildNumber: false)
+    }
+
     func fetchLatestBuildRuns(credentials: AppStoreConnectCredentials, appID: String, limit: Int) async throws -> [BuildRunSummary] {
         let token = try makeToken(from: credentials)
         let productID = try await fetchCIProductID(token: token, appID: appID)
@@ -67,14 +76,29 @@ actor AppStoreConnectClient: AppStoreConnectAPI {
 
         let data = try await performRequest(request)
         let response = try decoder.decode(BuildRunListResponse.self, from: data)
+        return mapBuildRuns(response, sortByBuildNumber: true)
+    }
 
+    private func mapBuildRuns(_ response: BuildRunListResponse, sortByBuildNumber: Bool) -> [BuildRunSummary] {
         var workflowByID: [String: String] = [:]
         var branchByID: [String: String] = [:]
+        var appByProductID: [String: ASCAppSummary] = [:]
 
         for resource in response.included ?? [] {
             if resource.type == "ciWorkflows", let name = resource.attributes?.name {
                 workflowByID[resource.id] = name
             }
+
+            if resource.type == "ciProducts" {
+                let appName = resource.attributes?.name ?? "Unknown App"
+                let bundleID = resource.attributes?.bundleID ?? "-"
+                appByProductID[resource.id] = ASCAppSummary(
+                    id: resource.id,
+                    name: appName,
+                    bundleID: bundleID
+                )
+            }
+
             if resource.type == "scmGitReferences" {
                 if let canonicalName = resource.attributes?.canonicalName {
                     branchByID[resource.id] = canonicalName
@@ -91,6 +115,8 @@ actor AppStoreConnectClient: AppStoreConnectAPI {
 
                 let branchID = resource.relationships?.sourceBranchOrTag?.data?.id
                 let branchName = branchID.flatMap { branchByID[$0] }
+                let productID = resource.relationships?.product?.data?.id
+                let app = productID.flatMap { appByProductID[$0] }
 
                 let issueCounts = BuildIssueCounts(
                     errors: resource.attributes.issueCounts?.errors ?? 0,
@@ -103,6 +129,7 @@ actor AppStoreConnectClient: AppStoreConnectAPI {
                     id: resource.id,
                     number: resource.attributes.number,
                     workflowName: workflowName,
+                    app: app,
                     status: BuildStatus.derive(
                         executionProgress: resource.attributes.executionProgress,
                         completionStatus: resource.attributes.completionStatus
@@ -121,7 +148,7 @@ actor AppStoreConnectClient: AppStoreConnectAPI {
                 )
             }
             .sorted { lhs, rhs in
-                if let lhsNumber = lhs.number, let rhsNumber = rhs.number {
+                if sortByBuildNumber, let lhsNumber = lhs.number, let rhsNumber = rhs.number {
                     return lhsNumber > rhsNumber
                 }
 
@@ -693,6 +720,7 @@ private nonisolated struct IssueCounts: Decodable {
 private nonisolated struct BuildRunRelationships: Decodable {
     let workflow: RelationshipContainer?
     let sourceBranchOrTag: RelationshipContainer?
+    let product: RelationshipContainer?
 }
 
 private nonisolated struct RelationshipContainer: Decodable {
@@ -879,4 +907,11 @@ private nonisolated struct ScmRepositoryAttributes: Decodable {
 private nonisolated struct IncludedAttributes: Decodable {
     let name: String?
     let canonicalName: String?
+    let bundleID: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case canonicalName
+        case bundleID = "bundleId"
+    }
 }
