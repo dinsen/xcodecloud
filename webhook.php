@@ -17,7 +17,7 @@ if ($secret !== '' && !verify_signature($rawBody, $secret)) {
     json_response(401, ['ok' => false, 'error' => 'invalid signature']);
 }
 
-$payload = decode_json_payload($rawBody);
+$payload = read_json_body();
 if ($payload === []) {
     json_response(400, ['ok' => false, 'error' => 'invalid json payload']);
 }
@@ -66,53 +66,22 @@ if (is_build_finished_event($eventType)) {
     json_response(200, ['ok' => true, 'event' => $eventType, 'state' => 'completed']);
 }
 
-http_response_code(204);
-exit;
+json_response(204, ['ok' => true, 'event' => $eventType, 'ignored' => true]);
 
 function verify_signature(string $rawBody, string $secret): bool
 {
-    $header = signature_header();
+    $header = (string) ($_SERVER['HTTP_X_APPLE_SIGNATURE'] ?? '');
     if ($header === '') {
         return false;
     }
 
-    foreach (['hmacsha256=', 'hmac-sha256=', 'sha256='] as $prefix) {
-        if (stripos($header, $prefix) === 0) {
-            $header = substr($header, strlen($prefix));
-            break;
-        }
+    $prefix = 'hmacsha256=';
+    if (stripos($header, $prefix) === 0) {
+        $header = substr($header, strlen($prefix));
     }
 
     $expected = hash_hmac('sha256', $rawBody, $secret);
     return hash_equals(strtolower($expected), strtolower(trim($header)));
-}
-
-function signature_header(): string
-{
-    $candidates = [
-        $_SERVER['HTTP_X_APPLE_SIGNATURE'] ?? null,
-        $_SERVER['REDIRECT_HTTP_X_APPLE_SIGNATURE'] ?? null,
-        $_SERVER['HTTP_X_APPLE_SIGNATURE_SHA256'] ?? null,
-        $_SERVER['REDIRECT_HTTP_X_APPLE_SIGNATURE_SHA256'] ?? null,
-    ];
-
-    foreach ($candidates as $candidate) {
-        if (is_string($candidate) && trim($candidate) !== '') {
-            return trim($candidate);
-        }
-    }
-
-    return '';
-}
-
-function decode_json_payload(string $rawBody): array
-{
-    try {
-        $decoded = json_decode($rawBody, true, 512, JSON_THROW_ON_ERROR);
-        return is_array($decoded) ? $decoded : [];
-    } catch (Throwable) {
-        return [];
-    }
 }
 
 function event_type(array $payload): string
