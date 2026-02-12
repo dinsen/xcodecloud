@@ -73,6 +73,34 @@ struct ASCRequestBuilder {
         )
     }
 
+    nonisolated static func makeBuildActionsRequest(token: String, runID: String, limit: Int = 100) throws -> URLRequest {
+        try makeRequest(path: "/v1/ciBuildRuns/\(runID)/actions", token: token, queryItems: [
+            URLQueryItem(name: "limit", value: "\(max(1, min(limit, 200)))"),
+            URLQueryItem(name: "fields[ciBuildActions]", value: "name,actionType,startedDate,finishedDate,issueCounts,executionProgress,completionStatus,isRequiredToPass"),
+        ])
+    }
+
+    nonisolated static func makeBuildActionIssuesRequest(token: String, actionID: String, limit: Int = 200) throws -> URLRequest {
+        try makeRequest(path: "/v1/ciBuildActions/\(actionID)/issues", token: token, queryItems: [
+            URLQueryItem(name: "limit", value: "\(max(1, min(limit, 200)))"),
+            URLQueryItem(name: "fields[ciIssues]", value: "issueType,message,fileSource,category"),
+        ])
+    }
+
+    nonisolated static func makeBuildActionTestResultsRequest(token: String, actionID: String, limit: Int = 200) throws -> URLRequest {
+        try makeRequest(path: "/v1/ciBuildActions/\(actionID)/testResults", token: token, queryItems: [
+            URLQueryItem(name: "limit", value: "\(max(1, min(limit, 200)))"),
+            URLQueryItem(name: "fields[ciTestResults]", value: "className,name,status,fileSource,message"),
+        ])
+    }
+
+    nonisolated static func makeBuildActionArtifactsRequest(token: String, actionID: String, limit: Int = 200) throws -> URLRequest {
+        try makeRequest(path: "/v1/ciBuildActions/\(actionID)/artifacts", token: token, queryItems: [
+            URLQueryItem(name: "limit", value: "\(max(1, min(limit, 200)))"),
+            URLQueryItem(name: "fields[ciArtifacts]", value: "fileType,fileName,fileSize,downloadUrl"),
+        ])
+    }
+
     private nonisolated static func makeRequest(
         path: String,
         token: String,

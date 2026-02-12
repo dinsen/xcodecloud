@@ -307,6 +307,17 @@ final class BuildFeedStore {
         }
     }
 
+    func loadBuildDiagnostics(runID: String) async throws -> BuildRunDiagnostics {
+        guard hasCompleteCredentials, let credentials else {
+            throw AppStoreConnectClientError.missingCredentials
+        }
+
+        return try await apiClient.fetchBuildRunDiagnostics(
+            credentials: credentials,
+            runID: runID
+        )
+    }
+
     func refreshBuildRuns() async {
         guard hasCompleteCredentials, let credentials else {
             errorMessage = "Credentials are missing."
@@ -460,7 +471,7 @@ final class BuildFeedStore {
         monitoringMode = mode
     }
 
-    private func sanitizedMessage(for error: Error) -> String {
+    func sanitizedMessage(for error: Error) -> String {
         if let known = error as? AppStoreConnectClientError {
             return known.localizedDescription
         }

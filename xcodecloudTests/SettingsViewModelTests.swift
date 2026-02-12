@@ -174,4 +174,8 @@ private final class MockAppStoreConnectAPI: AppStoreConnectAPI {
     }
 
     func triggerBuild(credentials: AppStoreConnectCredentials, appID: String, workflowID: String, clean: Bool) async throws {}
+
+    func fetchBuildRunDiagnostics(credentials: AppStoreConnectCredentials, runID: String) async throws -> BuildRunDiagnostics {
+        BuildRunDiagnostics(actions: [])
+    }
 }

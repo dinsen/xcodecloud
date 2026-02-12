@@ -6,6 +6,7 @@ protocol AppStoreConnectAPI {
     func fetchLatestBuildRuns(credentials: AppStoreConnectCredentials, appID: String, limit: Int) async throws -> [BuildRunSummary]
     func fetchWorkflows(credentials: AppStoreConnectCredentials, appID: String) async throws -> [CIWorkflowSummary]
     func triggerBuild(credentials: AppStoreConnectCredentials, appID: String, workflowID: String, clean: Bool) async throws
+    func fetchBuildRunDiagnostics(credentials: AppStoreConnectCredentials, runID: String) async throws -> BuildRunDiagnostics
 }
 
 actor AppStoreConnectClient: AppStoreConnectAPI {
@@ -191,6 +192,105 @@ actor AppStoreConnectClient: AppStoreConnectAPI {
             clean: clean
         )
         _ = try await performRequest(request)
+    }
+
+    func fetchBuildRunDiagnostics(credentials: AppStoreConnectCredentials, runID: String) async throws -> BuildRunDiagnostics {
+        let token = try makeToken(from: credentials)
+        let actionsRequest = try ASCRequestBuilder.makeBuildActionsRequest(token: token, runID: runID)
+        let actionsData = try await performRequest(actionsRequest)
+        let actionsResponse = try decoder.decode(BuildActionListResponse.self, from: actionsData)
+
+        var diagnostics: [BuildActionDiagnostics] = []
+
+        for action in actionsResponse.data {
+            async let issuesTask = fetchIssues(token: token, actionID: action.id)
+            async let testsTask = fetchTestResults(token: token, actionID: action.id)
+            async let artifactsTask = fetchArtifacts(token: token, actionID: action.id)
+
+            let issues = try await issuesTask
+            let tests = try await testsTask
+            let artifacts = try await artifactsTask
+
+            let issueCounts = BuildIssueCounts(
+                errors: action.attributes.issueCounts?.errors ?? 0,
+                warnings: action.attributes.issueCounts?.warnings ?? 0,
+                testFailures: action.attributes.issueCounts?.testFailures ?? 0,
+                analyzerWarnings: action.attributes.issueCounts?.analyzerWarnings ?? 0
+            )
+
+            diagnostics.append(
+                BuildActionDiagnostics(
+                    id: action.id,
+                    name: action.attributes.name ?? "Unknown Action",
+                    actionType: action.attributes.actionType,
+                    executionProgress: action.attributes.executionProgress,
+                    completionStatus: action.attributes.completionStatus,
+                    startedDate: action.attributes.startedDate,
+                    finishedDate: action.attributes.finishedDate,
+                    issueCounts: issueCounts,
+                    issues: issues,
+                    testResults: tests,
+                    artifacts: artifacts
+                )
+            )
+        }
+
+        let sorted = diagnostics.sorted {
+            let lhsDate = $0.startedDate ?? .distantPast
+            let rhsDate = $1.startedDate ?? .distantPast
+            return lhsDate < rhsDate
+        }
+
+        return BuildRunDiagnostics(actions: sorted)
+    }
+
+    private func fetchIssues(token: String, actionID: String) async throws -> [BuildIssueDiagnostics] {
+        let request = try ASCRequestBuilder.makeBuildActionIssuesRequest(token: token, actionID: actionID)
+        let data = try await performRequest(request)
+        let response = try decoder.decode(BuildIssueListResponse.self, from: data)
+
+        return response.data.map { issue in
+            BuildIssueDiagnostics(
+                id: issue.id,
+                issueType: issue.attributes.issueType,
+                category: issue.attributes.category,
+                message: issue.attributes.message,
+                fileSource: issue.attributes.fileSource
+            )
+        }
+    }
+
+    private func fetchTestResults(token: String, actionID: String) async throws -> [BuildTestResultDiagnostics] {
+        let request = try ASCRequestBuilder.makeBuildActionTestResultsRequest(token: token, actionID: actionID)
+        let data = try await performRequest(request)
+        let response = try decoder.decode(BuildTestResultListResponse.self, from: data)
+
+        return response.data.map { testResult in
+            BuildTestResultDiagnostics(
+                id: testResult.id,
+                className: testResult.attributes.className,
+                name: testResult.attributes.name,
+                status: testResult.attributes.status,
+                message: testResult.attributes.message,
+                fileSource: testResult.attributes.fileSource
+            )
+        }
+    }
+
+    private func fetchArtifacts(token: String, actionID: String) async throws -> [BuildArtifactDiagnostics] {
+        let request = try ASCRequestBuilder.makeBuildActionArtifactsRequest(token: token, actionID: actionID)
+        let data = try await performRequest(request)
+        let response = try decoder.decode(BuildArtifactListResponse.self, from: data)
+
+        return response.data.map { artifact in
+            BuildArtifactDiagnostics(
+                id: artifact.id,
+                fileType: artifact.attributes.fileType,
+                fileName: artifact.attributes.fileName,
+                fileSize: artifact.attributes.fileSize,
+                downloadURL: artifact.attributes.downloadURL
+            )
+        }
     }
 
     private func fetchCIProductID(token: String, appID: String) async throws -> String {
@@ -414,6 +514,81 @@ private nonisolated struct WorkflowIncludedAttributes: Decodable {
     let version: String?
     let ownerName: String?
     let repositoryName: String?
+}
+
+private nonisolated struct BuildActionListResponse: Decodable {
+    let data: [BuildActionResource]
+}
+
+private nonisolated struct BuildActionResource: Decodable {
+    let id: String
+    let attributes: BuildActionAttributes
+}
+
+private nonisolated struct BuildActionAttributes: Decodable {
+    let name: String?
+    let actionType: String?
+    let startedDate: Date?
+    let finishedDate: Date?
+    let issueCounts: IssueCounts?
+    let executionProgress: String?
+    let completionStatus: String?
+}
+
+private nonisolated struct BuildIssueListResponse: Decodable {
+    let data: [BuildIssueResource]
+}
+
+private nonisolated struct BuildIssueResource: Decodable {
+    let id: String
+    let attributes: BuildIssueAttributes
+}
+
+private nonisolated struct BuildIssueAttributes: Decodable {
+    let issueType: String?
+    let category: String?
+    let message: String?
+    let fileSource: String?
+}
+
+private nonisolated struct BuildTestResultListResponse: Decodable {
+    let data: [BuildTestResultResource]
+}
+
+private nonisolated struct BuildTestResultResource: Decodable {
+    let id: String
+    let attributes: BuildTestResultAttributes
+}
+
+private nonisolated struct BuildTestResultAttributes: Decodable {
+    let className: String?
+    let name: String?
+    let status: String?
+    let message: String?
+    let fileSource: String?
+}
+
+private nonisolated struct BuildArtifactListResponse: Decodable {
+    let data: [BuildArtifactResource]
+}
+
+private nonisolated struct BuildArtifactResource: Decodable {
+    let id: String
+    let attributes: BuildArtifactAttributes
+}
+
+private nonisolated struct BuildArtifactAttributes: Decodable {
+    let fileType: String?
+    let fileName: String?
+    let fileSize: Int?
+    let downloadURL: URL?
+
+    enum CodingKeys: String, CodingKey {
+        case fileType
+        case fileName
+        case fileSize
+        case downloadURL = "downloadUrl"
+    }
 }
 
 private nonisolated struct IncludedAttributes: Decodable {

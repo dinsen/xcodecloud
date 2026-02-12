@@ -1,7 +1,12 @@
 import SwiftUI
 
 struct BuildDetailView: View {
+    @Environment(BuildFeedStore.self) private var buildFeedStore
+
     let run: BuildRunSummary
+    @State private var diagnostics: BuildRunDiagnostics?
+    @State private var diagnosticsMessage: String?
+    @State private var isLoadingDiagnostics = false
 
     var body: some View {
         List {
@@ -64,8 +69,87 @@ struct BuildDetailView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            Section("Diagnostics") {
+                if isLoadingDiagnostics {
+                    ProgressView("Loading diagnostics...")
+                } else if let diagnostics {
+                    if diagnostics.actions.isEmpty {
+                        Text("No action diagnostics were returned.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(diagnostics.actions) { action in
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text(action.name)
+                                        .font(.headline)
+                                    Spacer()
+                                    Text(action.completionStatus ?? action.executionProgress ?? "Unknown")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                HStack(spacing: 12) {
+                                    Label("\(action.issues.count)", systemImage: "exclamationmark.triangle")
+                                    Label("\(action.testResults.count)", systemImage: "checklist.checked")
+                                    Label("\(action.artifacts.count)", systemImage: "doc")
+                                }
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                                if !action.issues.isEmpty {
+                                    Text("Issues")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    ForEach(action.issues.prefix(2)) { issue in
+                                        Text(issue.message ?? issue.issueType ?? "Issue")
+                                            .font(.caption)
+                                    }
+                                }
+
+                                if !action.testResults.isEmpty {
+                                    Text("Tests")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    ForEach(action.testResults.prefix(2)) { testResult in
+                                        Text(testResult.name ?? testResult.className ?? "Test Result")
+                                            .font(.caption)
+                                    }
+                                }
+
+                                if !action.artifacts.isEmpty {
+                                    Text("Artifacts")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    ForEach(action.artifacts.prefix(2)) { artifact in
+                                        if let downloadURL = artifact.downloadURL {
+                                            Link(destination: downloadURL) {
+                                                Text(artifact.fileName ?? artifact.fileType ?? "Artifact")
+                                                    .font(.caption)
+                                            }
+                                        } else {
+                                            Text(artifact.fileName ?? artifact.fileType ?? "Artifact")
+                                                .font(.caption)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                } else if let diagnosticsMessage {
+                    Text(diagnosticsMessage)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("No diagnostics loaded yet.")
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .navigationTitle(run.displayNumber)
+        .task(id: run.id) {
+            await loadDiagnostics()
+        }
     }
 
     @ViewBuilder
@@ -76,6 +160,21 @@ struct BuildDetailView: View {
             Spacer()
             Text(value)
                 .multilineTextAlignment(.trailing)
+        }
+    }
+
+    private func loadDiagnostics() async {
+        isLoadingDiagnostics = true
+        diagnosticsMessage = nil
+        defer { isLoadingDiagnostics = false }
+
+        do {
+            let diagnostics = try await buildFeedStore.loadBuildDiagnostics(runID: run.id)
+            self.diagnostics = diagnostics
+            self.diagnosticsMessage = nil
+        } catch {
+            self.diagnostics = nil
+            self.diagnosticsMessage = buildFeedStore.sanitizedMessage(for: error)
         }
     }
 }
