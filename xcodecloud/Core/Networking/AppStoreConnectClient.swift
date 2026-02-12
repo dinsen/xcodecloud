@@ -7,6 +7,9 @@ protocol AppStoreConnectAPI {
     func fetchWorkflows(credentials: AppStoreConnectCredentials, appID: String) async throws -> [CIWorkflowSummary]
     func triggerBuild(credentials: AppStoreConnectCredentials, appID: String, workflowID: String, clean: Bool) async throws
     func fetchBuildRunDiagnostics(credentials: AppStoreConnectCredentials, runID: String) async throws -> BuildRunDiagnostics
+    func setWorkflowEnabled(credentials: AppStoreConnectCredentials, workflowID: String, isEnabled: Bool) async throws
+    func deleteWorkflow(credentials: AppStoreConnectCredentials, workflowID: String) async throws
+    func duplicateWorkflow(credentials: AppStoreConnectCredentials, workflowID: String, newName: String) async throws
 }
 
 actor AppStoreConnectClient: AppStoreConnectAPI {
@@ -244,6 +247,109 @@ actor AppStoreConnectClient: AppStoreConnectAPI {
         return BuildRunDiagnostics(actions: sorted)
     }
 
+    func setWorkflowEnabled(credentials: AppStoreConnectCredentials, workflowID: String, isEnabled: Bool) async throws {
+        let token = try makeToken(from: credentials)
+        let request = try ASCRequestBuilder.makeWorkflowUpdateRequest(
+            token: token,
+            workflowID: workflowID,
+            isEnabled: isEnabled
+        )
+        _ = try await performRequest(request)
+    }
+
+    func deleteWorkflow(credentials: AppStoreConnectCredentials, workflowID: String) async throws {
+        let token = try makeToken(from: credentials)
+        let request = try ASCRequestBuilder.makeWorkflowDeleteRequest(token: token, workflowID: workflowID)
+        _ = try await performRequest(request)
+    }
+
+    func duplicateWorkflow(credentials: AppStoreConnectCredentials, workflowID: String, newName: String) async throws {
+        let token = try makeToken(from: credentials)
+        let detailRequest = try ASCRequestBuilder.makeWorkflowDetailRequest(token: token, workflowID: workflowID)
+        let detailData = try await performRequest(detailRequest)
+
+        guard let payload = try JSONSerialization.jsonObject(with: detailData) as? [String: Any],
+              let data = payload["data"] as? [String: Any],
+              let attributes = data["attributes"] as? [String: Any],
+              let relationships = data["relationships"] as? [String: Any] else {
+            throw AppStoreConnectClientError.invalidResponse
+        }
+
+        let actions = normalizedJSONValue(attributes["actions"]) as? [[String: Any]] ?? []
+        let description = normalizedJSONValue(attributes["description"]) as? String ?? "Cloned workflow"
+        let clean = normalizedJSONValue(attributes["clean"]) as? Bool ?? false
+        let isEnabled = normalizedJSONValue(attributes["isEnabled"]) as? Bool ?? true
+        let originalPath = normalizedJSONValue(attributes["containerFilePath"]) as? String ?? ".xcodecloud/workflows/default.xcworkflow"
+        let containerFilePath = makeWorkflowContainerPath(from: originalPath, name: newName)
+
+        guard let productID = relationshipID(in: relationships, key: "product"),
+              let repositoryID = relationshipID(in: relationships, key: "repository"),
+              let xcodeVersionID = relationshipID(in: relationships, key: "xcodeVersion"),
+              let macOSVersionID = relationshipID(in: relationships, key: "macOsVersion") else {
+            throw AppStoreConnectClientError.invalidResponse
+        }
+
+        var createAttributes: [String: Any] = [
+            "name": newName,
+            "description": description,
+            "actions": actions,
+            "isEnabled": isEnabled,
+            "clean": clean,
+            "containerFilePath": containerFilePath,
+        ]
+
+        for key in [
+            "branchStartCondition",
+            "tagStartCondition",
+            "pullRequestStartCondition",
+            "scheduledStartCondition",
+            "manualBranchStartCondition",
+            "manualTagStartCondition",
+            "manualPullRequestStartCondition",
+        ] {
+            if let value = normalizedJSONValue(attributes[key]) {
+                createAttributes[key] = value
+            }
+        }
+
+        let requestBody: [String: Any] = [
+            "data": [
+                "type": "ciWorkflows",
+                "attributes": createAttributes,
+                "relationships": [
+                    "product": [
+                        "data": [
+                            "type": "ciProducts",
+                            "id": productID,
+                        ],
+                    ],
+                    "repository": [
+                        "data": [
+                            "type": "scmRepositories",
+                            "id": repositoryID,
+                        ],
+                    ],
+                    "xcodeVersion": [
+                        "data": [
+                            "type": "ciXcodeVersions",
+                            "id": xcodeVersionID,
+                        ],
+                    ],
+                    "macOsVersion": [
+                        "data": [
+                            "type": "ciMacOsVersions",
+                            "id": macOSVersionID,
+                        ],
+                    ],
+                ],
+            ],
+        ]
+
+        let requestData = try JSONSerialization.data(withJSONObject: requestBody, options: [])
+        let request = try ASCRequestBuilder.makeWorkflowCreateRequest(token: token, body: requestData)
+        _ = try await performRequest(request)
+    }
+
     private func fetchIssues(token: String, actionID: String) async throws -> [BuildIssueDiagnostics] {
         let request = try ASCRequestBuilder.makeBuildActionIssuesRequest(token: token, actionID: actionID)
         let data = try await performRequest(request)
@@ -291,6 +397,50 @@ actor AppStoreConnectClient: AppStoreConnectAPI {
                 downloadURL: artifact.attributes.downloadURL
             )
         }
+    }
+
+    private func relationshipID(in relationships: [String: Any], key: String) -> String? {
+        guard let relationship = relationships[key] as? [String: Any],
+              let data = relationship["data"] as? [String: Any],
+              let id = data["id"] as? String else {
+            return nil
+        }
+
+        return id
+    }
+
+    private func normalizedJSONValue(_ value: Any?) -> Any? {
+        guard let value else { return nil }
+        if value is NSNull { return nil }
+        return value
+    }
+
+    private func makeWorkflowContainerPath(from originalPath: String, name: String) -> String {
+        let original = NSString(string: originalPath)
+        let directory = original.deletingLastPathComponent
+        let ext = original.pathExtension
+        let slug = workflowSlug(name)
+        let fileName = ext.isEmpty ? slug : "\(slug).\(ext)"
+
+        if directory.isEmpty || directory == "." {
+            return fileName
+        }
+
+        return "\(directory)/\(fileName)"
+    }
+
+    private func workflowSlug(_ name: String) -> String {
+        let lowercased = name.lowercased()
+        let scalarView = lowercased.unicodeScalars.map { scalar -> Character in
+            if CharacterSet.alphanumerics.contains(scalar) {
+                return Character(scalar)
+            }
+            return "-"
+        }
+
+        let raw = String(scalarView)
+        let collapsed = raw.replacingOccurrences(of: "-+", with: "-", options: .regularExpression)
+        return collapsed.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
     }
 
     private func fetchCIProductID(token: String, appID: String) async throws -> String {

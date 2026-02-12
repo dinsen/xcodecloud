@@ -85,6 +85,19 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            Section("Xcode Cloud") {
+                NavigationLink {
+                    WorkflowManagementView()
+                } label: {
+                    HStack {
+                        Image(systemName: "slider.horizontal.3")
+                            .foregroundStyle(.secondary)
+                        Text("Workflows")
+                    }
+                }
+                .disabled(!buildFeedStore.hasCompleteCredentials)
+            }
         }
         .navigationTitle("Settings")
         .task {

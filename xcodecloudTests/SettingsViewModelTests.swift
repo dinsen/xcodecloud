@@ -178,4 +178,10 @@ private final class MockAppStoreConnectAPI: AppStoreConnectAPI {
     func fetchBuildRunDiagnostics(credentials: AppStoreConnectCredentials, runID: String) async throws -> BuildRunDiagnostics {
         BuildRunDiagnostics(actions: [])
     }
+
+    func setWorkflowEnabled(credentials: AppStoreConnectCredentials, workflowID: String, isEnabled: Bool) async throws {}
+
+    func deleteWorkflow(credentials: AppStoreConnectCredentials, workflowID: String) async throws {}
+
+    func duplicateWorkflow(credentials: AppStoreConnectCredentials, workflowID: String, newName: String) async throws {}
 }

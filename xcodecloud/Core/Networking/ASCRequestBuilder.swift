@@ -101,6 +101,57 @@ struct ASCRequestBuilder {
         ])
     }
 
+    nonisolated static func makeWorkflowDetailRequest(token: String, workflowID: String) throws -> URLRequest {
+        try makeRequest(path: "/v1/ciWorkflows/\(workflowID)", token: token, queryItems: [
+            URLQueryItem(name: "fields[ciWorkflows]", value: "name,description,actions,isEnabled,clean,containerFilePath,product,repository,xcodeVersion,macOsVersion"),
+            URLQueryItem(name: "include", value: "product,repository,xcodeVersion,macOsVersion"),
+        ])
+    }
+
+    nonisolated static func makeWorkflowUpdateRequest(
+        token: String,
+        workflowID: String,
+        name: String? = nil,
+        isEnabled: Bool? = nil
+    ) throws -> URLRequest {
+        var attributes: [String: Any] = [:]
+        if let name {
+            attributes["name"] = name
+        }
+        if let isEnabled {
+            attributes["isEnabled"] = isEnabled
+        }
+
+        let body: [String: Any] = [
+            "data": [
+                "type": "ciWorkflows",
+                "id": workflowID,
+                "attributes": attributes,
+            ],
+        ]
+
+        let bodyData = try JSONSerialization.data(withJSONObject: body, options: [])
+        return try makeRequest(
+            path: "/v1/ciWorkflows/\(workflowID)",
+            token: token,
+            method: "PATCH",
+            body: bodyData
+        )
+    }
+
+    nonisolated static func makeWorkflowDeleteRequest(token: String, workflowID: String) throws -> URLRequest {
+        try makeRequest(path: "/v1/ciWorkflows/\(workflowID)", token: token, method: "DELETE")
+    }
+
+    nonisolated static func makeWorkflowCreateRequest(token: String, body: Data) throws -> URLRequest {
+        try makeRequest(
+            path: "/v1/ciWorkflows",
+            token: token,
+            method: "POST",
+            body: body
+        )
+    }
+
     private nonisolated static func makeRequest(
         path: String,
         token: String,

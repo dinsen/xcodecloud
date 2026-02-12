@@ -33,9 +33,11 @@ final class BuildFeedStore {
     private(set) var isLoadingBuildRuns = false
     private(set) var isLoadingWorkflows = false
     private(set) var isTriggeringBuild = false
+    private(set) var isManagingWorkflows = false
     private(set) var errorMessage: String?
     private(set) var appSelectionMessage: String?
     private(set) var buildTriggerMessage: String?
+    private(set) var workflowManagementMessage: String?
     private(set) var lastUpdated: Date?
     private(set) var hasLoadedInitialState = false
 
@@ -265,10 +267,14 @@ final class BuildFeedStore {
                 credentials: credentials,
                 appID: selectedApp.id
             )
-            buildTriggerMessage = workflows.isEmpty ? "No workflows available for this app." : nil
+            let message = workflows.isEmpty ? "No workflows available for this app." : nil
+            buildTriggerMessage = message
+            workflowManagementMessage = message
         } catch {
             workflows = []
-            buildTriggerMessage = sanitizedMessage(for: error)
+            let message = sanitizedMessage(for: error)
+            buildTriggerMessage = message
+            workflowManagementMessage = message
         }
     }
 
@@ -303,6 +309,99 @@ final class BuildFeedStore {
             return true
         } catch {
             buildTriggerMessage = sanitizedMessage(for: error)
+            return false
+        }
+    }
+
+    func setWorkflowEnabled(workflowID: String, isEnabled: Bool) async -> Bool {
+        guard hasCompleteCredentials, let credentials else {
+            workflowManagementMessage = "Credentials are missing."
+            return false
+        }
+
+        guard monitoringMode == .singleApp else {
+            workflowManagementMessage = "Switch to single-app mode to manage workflows."
+            return false
+        }
+
+        isManagingWorkflows = true
+        defer { isManagingWorkflows = false }
+
+        do {
+            try await apiClient.setWorkflowEnabled(
+                credentials: credentials,
+                workflowID: workflowID,
+                isEnabled: isEnabled
+            )
+            workflowManagementMessage = nil
+            await loadWorkflows()
+            return true
+        } catch {
+            workflowManagementMessage = sanitizedMessage(for: error)
+            return false
+        }
+    }
+
+    func deleteWorkflow(workflowID: String) async -> Bool {
+        guard hasCompleteCredentials, let credentials else {
+            workflowManagementMessage = "Credentials are missing."
+            return false
+        }
+
+        guard monitoringMode == .singleApp else {
+            workflowManagementMessage = "Switch to single-app mode to manage workflows."
+            return false
+        }
+
+        isManagingWorkflows = true
+        defer { isManagingWorkflows = false }
+
+        do {
+            try await apiClient.deleteWorkflow(
+                credentials: credentials,
+                workflowID: workflowID
+            )
+            workflowManagementMessage = nil
+            await loadWorkflows()
+            await refreshBuildRuns()
+            return true
+        } catch {
+            workflowManagementMessage = sanitizedMessage(for: error)
+            return false
+        }
+    }
+
+    func duplicateWorkflow(workflowID: String, newName: String) async -> Bool {
+        guard hasCompleteCredentials, let credentials else {
+            workflowManagementMessage = "Credentials are missing."
+            return false
+        }
+
+        guard monitoringMode == .singleApp else {
+            workflowManagementMessage = "Switch to single-app mode to manage workflows."
+            return false
+        }
+
+        let trimmedName = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            workflowManagementMessage = "Workflow name cannot be empty."
+            return false
+        }
+
+        isManagingWorkflows = true
+        defer { isManagingWorkflows = false }
+
+        do {
+            try await apiClient.duplicateWorkflow(
+                credentials: credentials,
+                workflowID: workflowID,
+                newName: trimmedName
+            )
+            workflowManagementMessage = nil
+            await loadWorkflows()
+            return true
+        } catch {
+            workflowManagementMessage = sanitizedMessage(for: error)
             return false
         }
     }
