@@ -242,6 +242,9 @@
 				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
+					12CAFC53D3EEEC78C18EF628 = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					9D53BB732F3DCCAD000A47BF = {
 						CreatedOnToolsVersion = 26.2;
 					};
