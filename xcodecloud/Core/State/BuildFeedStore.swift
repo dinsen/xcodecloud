@@ -196,11 +196,11 @@ final class BuildFeedStore {
             return
         }
 
-        await loadApps()
-
         if selectedApp != nil {
             await refreshBuildRuns()
         }
+
+        await loadApps()
     }
 
     func reloadCredentials() {
@@ -667,11 +667,11 @@ final class BuildFeedStore {
             return
         }
 
-        await loadApps()
-
         if selectedApp != nil {
             await refreshBuildRuns()
         }
+
+        await loadApps()
     }
 
     private func persistSelectedApp(_ app: ASCAppSummary) {
