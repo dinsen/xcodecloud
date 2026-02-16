@@ -501,10 +501,11 @@ final class BuildFeedStore {
 
         // Fast path: one portfolio request across all apps/workflows.
         do {
-            buildRuns = try await apiClient.fetchPortfolioBuildRuns(
+            let runs = try await apiClient.fetchPortfolioBuildRuns(
                 credentials: credentials,
                 limit: 200
             )
+            buildRuns = runs.filter(Self.isRunFromToday)
             errorMessage = nil
             lastUpdated = Date()
             return
@@ -539,7 +540,9 @@ final class BuildFeedStore {
             }
         }
 
-        let runs = mergedRuns.sorted(by: Self.sortRuns)
+        let runs = mergedRuns
+            .filter(Self.isRunFromToday)
+            .sorted(by: Self.sortRuns)
 
         if !partialErrors.isEmpty {
             errorMessage = "Some apps could not be refreshed."
@@ -746,5 +749,11 @@ final class BuildFeedStore {
         }
 
         return sortRuns(lhs: lhs, rhs: rhs)
+    }
+
+    private static func isRunFromToday(_ run: BuildRunSummary) -> Bool {
+        let referenceDate = run.createdDate ?? run.startedDate ?? run.finishedDate
+        guard let referenceDate else { return false }
+        return Calendar.current.isDateInToday(referenceDate)
     }
 }
