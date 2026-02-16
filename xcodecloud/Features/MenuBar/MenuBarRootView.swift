@@ -21,10 +21,10 @@ struct MenuBarRootView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(buildFeedStore.isMonitoringAllApps ? "All Apps" : (buildFeedStore.selectedApp?.name ?? "No App Selected"))
+                    Text(buildFeedStore.isMonitoringAllApps ? "All Apps" : (buildFeedStore.dashboardFilterApp?.name ?? "Filtered App"))
                         .font(.headline)
-                    if let selectedApp = buildFeedStore.selectedApp, !buildFeedStore.isMonitoringAllApps {
-                        Text(selectedApp.bundleID)
+                    if let filteredApp = buildFeedStore.dashboardFilterApp, !buildFeedStore.isMonitoringAllApps {
+                        Text(filteredApp.bundleID)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else if buildFeedStore.isMonitoringAllApps {
@@ -62,9 +62,6 @@ struct MenuBarRootView: View {
 
             if !buildFeedStore.hasCompleteCredentials {
                 Text("Add credentials in Settings to load builds.")
-                    .foregroundStyle(.secondary)
-            } else if buildFeedStore.selectedApp == nil {
-                Text("Select an app in Settings.")
                     .foregroundStyle(.secondary)
             } else if buildFeedStore.isLoadingBuildRuns && buildFeedStore.buildRuns.isEmpty {
                 ProgressView("Loading builds...")

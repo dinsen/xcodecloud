@@ -21,12 +21,14 @@ final class BuildFeedStore {
         static let selectedAppName = "selectedAppDisplayName"
         static let selectedAppBundleID = "selectedAppBundleID"
         static let monitoringMode = "monitoringMode"
+        static let dashboardFilterAppID = "dashboardFilterAppID"
     }
 
     private(set) var credentials: AppStoreConnectCredentials?
     private(set) var availableApps: [ASCAppSummary] = []
     private(set) var selectedApp: ASCAppSummary?
     private(set) var monitoringMode: BuildMonitoringMode = .singleApp
+    private(set) var dashboardFilterAppID: String?
     private(set) var buildRuns: [BuildRunSummary] = []
     private(set) var workflows: [CIWorkflowSummary] = []
     private(set) var compatibilityMatrix: CICompatibilityMatrix?
@@ -55,7 +57,28 @@ final class BuildFeedStore {
     }
 
     var isMonitoringAllApps: Bool {
-        true
+        dashboardFilterAppID == nil
+    }
+
+    var dashboardFilterApp: ASCAppSummary? {
+        guard let dashboardFilterAppID else { return nil }
+        return dashboardFilterOptions.first(where: { $0.id == dashboardFilterAppID })
+    }
+
+    var dashboardFilterOptions: [ASCAppSummary] {
+        var appsByID: [String: ASCAppSummary] = [:]
+
+        for app in availableApps {
+            appsByID[app.id] = app
+        }
+
+        for app in buildRuns.compactMap(\.app) where appsByID[app.id] == nil {
+            appsByID[app.id] = app
+        }
+
+        return appsByID.values.sorted {
+            $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
     }
 
     var monitoredAppDescription: String {
@@ -63,7 +86,7 @@ final class BuildFeedStore {
     }
 
     var workflowSections: [WorkflowBuildSection] {
-        let grouped = Dictionary(grouping: buildRuns, by: { $0.workflowName })
+        let grouped = Dictionary(grouping: dashboardFilteredRuns, by: { $0.workflowName })
 
         return grouped
             .map { key, runs in
@@ -87,7 +110,7 @@ final class BuildFeedStore {
     }
 
     var appSections: [AppBuildSection] {
-        let grouped = Dictionary(grouping: buildRuns, by: { $0.app?.id ?? "unknown" })
+        let grouped = Dictionary(grouping: dashboardFilteredRuns, by: { $0.app?.id ?? "unknown" })
 
         return grouped
             .compactMap { _, runs in
@@ -110,20 +133,20 @@ final class BuildFeedStore {
     }
 
     var portfolioRunningBuilds: [BuildRunSummary] {
-        buildRuns
+        dashboardFilteredRuns
             .filter { $0.status == .running }
             .sorted(by: Self.sortRunsByLastRun)
     }
 
     var portfolioFailedBuilds: [BuildRunSummary] {
-        buildRuns
+        dashboardFilteredRuns
             .filter { $0.status == .failed }
             .sorted(by: Self.sortRunsByLastRun)
     }
 
     var portfolioSuccessfulBuilds: [BuildRunSummary] {
         Array(
-            buildRuns
+            dashboardFilteredRuns
                 .filter { $0.status == .succeeded }
                 .sorted(by: Self.sortRunsByLastRun)
                 .prefix(20)
@@ -164,6 +187,7 @@ final class BuildFeedStore {
         reloadCredentials()
         loadSelectedAppFromDefaults()
         loadMonitoringModeFromDefaults()
+        loadDashboardFilterAppFromDefaults()
 
         _ = NotificationCenter.default.addObserver(
             forName: .appStoreConnectCredentialsDidChange,
@@ -237,9 +261,21 @@ final class BuildFeedStore {
             if monitoringMode == .allApps {
                 appSelectionMessage = nil
             }
+
+            if let dashboardFilterAppID,
+               !apps.contains(where: { $0.id == dashboardFilterAppID }),
+               !buildRuns.contains(where: { $0.app?.id == dashboardFilterAppID }) {
+                setDashboardFilter(appID: nil)
+            }
         } catch {
             appSelectionMessage = sanitizedMessage(for: error)
         }
+    }
+
+    func setDashboardFilter(appID: String?) {
+        guard dashboardFilterAppID != appID else { return }
+        dashboardFilterAppID = appID
+        persistDashboardFilterAppID(appID)
     }
 
     func setMonitoringMode(_ mode: BuildMonitoringMode) async {
@@ -704,6 +740,18 @@ final class BuildFeedStore {
         monitoringMode = mode
     }
 
+    private func persistDashboardFilterAppID(_ appID: String?) {
+        if let appID {
+            userDefaults.set(appID, forKey: DefaultsKey.dashboardFilterAppID)
+        } else {
+            userDefaults.removeObject(forKey: DefaultsKey.dashboardFilterAppID)
+        }
+    }
+
+    private func loadDashboardFilterAppFromDefaults() {
+        dashboardFilterAppID = userDefaults.string(forKey: DefaultsKey.dashboardFilterAppID)
+    }
+
     func sanitizedMessage(for error: Error) -> String {
         if let known = error as? AppStoreConnectClientError {
             return known.localizedDescription
@@ -745,5 +793,10 @@ final class BuildFeedStore {
         let referenceDate = run.createdDate ?? run.startedDate ?? run.finishedDate
         guard let referenceDate else { return false }
         return Calendar.current.isDateInToday(referenceDate)
+    }
+
+    private var dashboardFilteredRuns: [BuildRunSummary] {
+        guard let dashboardFilterAppID else { return buildRuns }
+        return buildRuns.filter { $0.app?.id == dashboardFilterAppID }
     }
 }
