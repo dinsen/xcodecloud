@@ -69,7 +69,7 @@ struct SettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("Select an app first. Dashboard and all Xcode Cloud actions unlock after selection.")
+                    Text("Selecting an app is optional for the dashboard, but required for app-specific actions.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

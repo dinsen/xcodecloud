@@ -11,12 +11,6 @@ struct BuildDashboardView: View {
                     systemImage: "key.slash",
                     description: Text("Open Settings to add App Store Connect API credentials.")
                 )
-            } else if buildFeedStore.selectedApp == nil {
-                ContentUnavailableView(
-                    "Select an App",
-                    systemImage: "app.badge",
-                    description: Text("Open Settings and choose an app first.")
-                )
             } else if buildFeedStore.isLoadingBuildRuns, buildFeedStore.buildRuns.isEmpty {
                 ProgressView("Loading Builds...")
             } else if let errorMessage = buildFeedStore.errorMessage, buildFeedStore.buildRuns.isEmpty {

@@ -196,9 +196,7 @@ final class BuildFeedStore {
             return
         }
 
-        if selectedApp != nil {
-            await refreshBuildRuns()
-        }
+        await refreshBuildRuns()
 
         await loadApps()
     }
@@ -493,12 +491,6 @@ final class BuildFeedStore {
         isLoadingBuildRuns = true
         defer { isLoadingBuildRuns = false }
 
-        guard selectedApp != nil else {
-            errorMessage = "Select an app in Settings to load build runs."
-            buildRuns = []
-            return
-        }
-
         // Fast path: one portfolio request across all apps/workflows.
         do {
             let runs = try await apiClient.fetchPortfolioBuildRuns(
@@ -670,9 +662,7 @@ final class BuildFeedStore {
             return
         }
 
-        if selectedApp != nil {
-            await refreshBuildRuns()
-        }
+        await refreshBuildRuns()
 
         await loadApps()
     }
