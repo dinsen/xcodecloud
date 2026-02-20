@@ -16,7 +16,11 @@ $appId = trim((string) ($payload['appId'] ?? ''));
 $deviceToken = strtolower(trim((string) ($payload['deviceToken'] ?? '')));
 $appBundleId = trim((string) ($payload['appBundleId'] ?? ''));
 
-if ($appId === '' || $appBundleId === '' || !preg_match('/^[a-f0-9]{64,200}$/', $deviceToken)) {
+if ($appId === '') {
+    $appId = '*';
+}
+
+if ($appBundleId === '' || !preg_match('/^[a-f0-9]{64,200}$/', $deviceToken)) {
     json_response(422, ['ok' => false, 'error' => 'missing or invalid registration fields']);
 }
 

@@ -676,6 +676,7 @@ final class BuildFeedStore {
 
         guard enabled else {
             liveStatusEndpointURL = nil
+            lastRegisteredDeviceSubscription = nil
             Task { [weak self] in
                 await self?.liveStatusDeviceRegistrationClient.setEndpointURL(nil)
             }
@@ -690,6 +691,7 @@ final class BuildFeedStore {
               let scheme = endpointURL.scheme?.lowercased(),
               scheme == "https" || scheme == "http" else {
             liveStatusEndpointURL = nil
+            lastRegisteredDeviceSubscription = nil
             Task { [weak self] in
                 await self?.liveStatusDeviceRegistrationClient.setEndpointURL(nil)
             }
@@ -709,6 +711,7 @@ final class BuildFeedStore {
         let deviceRegistrationEndpoint = Self.derivedDeviceRegistrationEndpoint(from: endpointURL)
         Task { [weak self] in
             guard let self else { return }
+            self.lastRegisteredDeviceSubscription = nil
             await self.liveStatusDeviceRegistrationClient.setEndpointURL(deviceRegistrationEndpoint)
             await self.registerDeviceForWakeNotificationsIfNeeded()
         }
@@ -733,6 +736,7 @@ final class BuildFeedStore {
         liveStatusTask = nil
         isPollingLiveStatus = false
         liveStatusEndpointURL = nil
+        lastRegisteredDeviceSubscription = nil
         Task { [weak self] in
             await self?.liveStatusDeviceRegistrationClient.setEndpointURL(nil)
         }
@@ -742,24 +746,21 @@ final class BuildFeedStore {
     }
 
     private func refreshLiveStatus(endpointURL: URL) async {
-        guard let selectedApp else {
-            liveStatus = nil
-            liveStatusMessage = "Select an app in Settings first."
-            await liveActivityManager.end()
-            return
-        }
+        let scopedAppID = liveStatusScopeAppID()
+        let activityAppID = scopedAppID ?? "all-apps"
+        let activityAppName = scopedAppID == nil ? "All Apps" : (selectedApp?.name ?? "Selected App")
 
         do {
             let status = try await liveStatusClient.fetchStatus(
                 endpointURL: endpointURL,
-                appID: selectedApp.id
+                appID: scopedAppID
             )
             liveStatus = status
             liveStatusMessage = nil
 
             await liveActivityManager.update(
-                appID: selectedApp.id,
-                appName: selectedApp.name,
+                appID: activityAppID,
+                appName: activityAppName,
                 runningCount: status.runningCount,
                 singleBuildStartedAt: status.singleBuildStartedAt
             )
@@ -887,18 +888,19 @@ final class BuildFeedStore {
     private func registerDeviceForWakeNotificationsIfNeeded() async {
         guard isPollingLiveStatus,
               liveStatusEndpointURL != nil,
-              let selectedApp,
               let latestRemoteDeviceToken,
               let appBundleID = Bundle.main.bundleIdentifier else {
             return
         }
 
-        let candidate = DeviceSubscription(appID: selectedApp.id, token: latestRemoteDeviceToken)
+        let registrationAppID = liveStatusScopeAppID()
+        let scopeKey = registrationAppID ?? "__all_apps__"
+        let candidate = DeviceSubscription(appID: scopeKey, token: latestRemoteDeviceToken)
         guard candidate != lastRegisteredDeviceSubscription else { return }
 
         do {
             try await liveStatusDeviceRegistrationClient.registerDevice(
-                appID: selectedApp.id,
+                appID: registrationAppID,
                 deviceToken: latestRemoteDeviceToken,
                 appBundleID: appBundleID
             )
@@ -906,6 +908,11 @@ final class BuildFeedStore {
         } catch {
             liveStatusMessage = sanitizedMessage(for: error)
         }
+    }
+
+    private func liveStatusScopeAppID() -> String? {
+        guard monitoringMode == .singleApp else { return nil }
+        return selectedApp?.id
     }
 
     func sanitizedMessage(for error: Error) -> String {

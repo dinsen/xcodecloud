@@ -22,6 +22,6 @@
 ## Notes
 - `status.php` supports optional `?appId=<ASC_APP_ID>` to scope counts to one app.
 - `webhook.php` verifies `x-apple-signature` using `HMAC-SHA256` when `XCC_WEBHOOK_SECRET` is set.
-- `register_device.php` expects JSON body: `{ "appId": "...", "deviceToken": "...", "appBundleId": "..." }`.
+- `register_device.php` expects JSON body: `{ "appId": "...", "deviceToken": "...", "appBundleId": "..." }` where `appId` is optional; omitted/empty registers for all apps.
 - `webhook.php` now pushes background APNs notifications to wake iOS, so the app can refresh live status and start/update Live Activity even when closed.
 - Data retention is minimal: currently running builds plus recent device subscriptions.

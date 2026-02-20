@@ -2,7 +2,7 @@ import Foundation
 
 protocol LiveStatusDeviceRegistrationAPI {
     func setEndpointURL(_ endpointURL: URL?) async
-    func registerDevice(appID: String, deviceToken: String, appBundleID: String) async throws
+    func registerDevice(appID: String?, deviceToken: String, appBundleID: String) async throws
 }
 
 actor LiveStatusDeviceRegistrationClient: LiveStatusDeviceRegistrationAPI {
@@ -17,7 +17,7 @@ actor LiveStatusDeviceRegistrationClient: LiveStatusDeviceRegistrationAPI {
         self.endpointURL = endpointURL
     }
 
-    func registerDevice(appID: String, deviceToken: String, appBundleID: String) async throws {
+    func registerDevice(appID: String?, deviceToken: String, appBundleID: String) async throws {
         guard let endpointURL else {
             throw LiveStatusDeviceRegistrationError.missingEndpoint
         }
@@ -63,7 +63,7 @@ enum LiveStatusDeviceRegistrationError: LocalizedError {
 }
 
 private nonisolated struct RegistrationPayload: Encodable {
-    let appID: String
+    let appID: String?
     let deviceToken: String
     let appBundleID: String
 

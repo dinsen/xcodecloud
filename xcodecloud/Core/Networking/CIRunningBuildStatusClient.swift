@@ -1,7 +1,7 @@
 import Foundation
 
 protocol CIRunningBuildStatusAPI {
-    func fetchStatus(endpointURL: URL, appID: String) async throws -> CIRunningBuildStatus
+    func fetchStatus(endpointURL: URL, appID: String?) async throws -> CIRunningBuildStatus
 }
 
 actor CIRunningBuildStatusClient: CIRunningBuildStatusAPI {
@@ -16,14 +16,16 @@ actor CIRunningBuildStatusClient: CIRunningBuildStatusAPI {
         self.decoder = decoder
     }
 
-    func fetchStatus(endpointURL: URL, appID: String) async throws -> CIRunningBuildStatus {
+    func fetchStatus(endpointURL: URL, appID: String?) async throws -> CIRunningBuildStatus {
         guard var components = URLComponents(url: endpointURL, resolvingAgainstBaseURL: false) else {
             throw CIRunningBuildStatusClientError.invalidEndpoint
         }
 
         var queryItems = components.queryItems ?? []
         queryItems.removeAll(where: { $0.name == "appId" })
-        queryItems.append(URLQueryItem(name: "appId", value: appID))
+        if let appID {
+            queryItems.append(URLQueryItem(name: "appId", value: appID))
+        }
         components.queryItems = queryItems
 
         guard let url = components.url else {

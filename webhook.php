@@ -163,6 +163,7 @@ function push_live_status_wake_notifications(mysqli $db, string $appId, string $
 
         $topic = (string) $subscription['app_bundle_id'];
         $token = (string) $subscription['device_token'];
+        $subscriptionAppID = (string) $subscription['app_id'];
         $result = send_apns_background_notification($credentials, $topic, $token, $payload);
 
         if ($result['ok']) {
@@ -173,7 +174,7 @@ function push_live_status_wake_notifications(mysqli $db, string $appId, string $
                  WHERE device_token = ? AND app_id = ?'
             );
             if ($stmt) {
-                $stmt->bind_param('ss', $token, $appId);
+                $stmt->bind_param('ss', $token, $subscriptionAppID);
                 $stmt->execute();
                 $stmt->close();
             }
@@ -183,7 +184,7 @@ function push_live_status_wake_notifications(mysqli $db, string $appId, string $
         if ($result['removeToken']) {
             $stmt = $db->prepare('DELETE FROM xcc_device_subscriptions WHERE device_token = ? AND app_id = ?');
             if ($stmt) {
-                $stmt->bind_param('ss', $token, $appId);
+                $stmt->bind_param('ss', $token, $subscriptionAppID);
                 $stmt->execute();
                 $stmt->close();
             }
@@ -201,9 +202,9 @@ function push_live_status_wake_notifications(mysqli $db, string $appId, string $
 function fetch_device_subscriptions(mysqli $db, string $appId): array
 {
     $stmt = $db->prepare(
-        'SELECT device_token, app_bundle_id
+        'SELECT device_token, app_bundle_id, app_id
          FROM xcc_device_subscriptions
-         WHERE app_id = ?'
+         WHERE app_id = ? OR app_id = "*"'
     );
 
     if (!$stmt) {
