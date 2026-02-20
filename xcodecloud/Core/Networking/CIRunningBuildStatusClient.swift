@@ -47,6 +47,7 @@ actor CIRunningBuildStatusClient: CIRunningBuildStatusAPI {
         return CIRunningBuildStatus(
             buildsRunning: parsedResponse.buildsRunning,
             runningCount: parsedResponse.runningCount,
+            singleBuildStartedAt: parsedResponse.singleBuildStartedAt,
             checkedAt: parsedResponse.checkedAt
         )
     }
@@ -72,5 +73,6 @@ enum CIRunningBuildStatusClientError: LocalizedError {
 private nonisolated struct CIRunningBuildStatusResponse: Decodable {
     let buildsRunning: Bool
     let runningCount: Int
+    let singleBuildStartedAt: Date?
     let checkedAt: Date?
 }

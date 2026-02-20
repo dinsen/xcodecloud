@@ -1,5 +1,8 @@
 import Foundation
 import Observation
+#if os(iOS)
+import UIKit
+#endif
 
 enum BuildMonitoringMode: String, CaseIterable, Sendable {
     case singleApp
@@ -22,6 +25,14 @@ final class BuildFeedStore {
         static let selectedAppBundleID = "selectedAppBundleID"
         static let monitoringMode = "monitoringMode"
         static let dashboardFilterAppID = "dashboardFilterAppID"
+        static let liveStatusEnabled = "liveStatusEnabled"
+        static let liveStatusEndpointURL = "liveStatusEndpointURL"
+        static let liveStatusPollIntervalSeconds = "liveStatusPollIntervalSeconds"
+    }
+
+    private struct DeviceSubscription: Equatable {
+        let appID: String
+        let token: String
     }
 
     private(set) var credentials: AppStoreConnectCredentials?
@@ -166,22 +177,31 @@ final class BuildFeedStore {
     private let apiClient: any AppStoreConnectAPI
     private let liveStatusClient: any CIRunningBuildStatusAPI
     private let liveActivityManager: any BuildLiveActivityManaging
+    private let liveStatusDeviceRegistrationClient: any LiveStatusDeviceRegistrationAPI
     private let userDefaults: UserDefaults
 
     private var autoRefreshTask: Task<Void, Never>?
     private var liveStatusTask: Task<Void, Never>?
+    private var liveStatusEndpointURL: URL?
+    private var latestRemoteDeviceToken: String?
+    private var lastRegisteredDeviceSubscription: DeviceSubscription?
+#if os(iOS)
+    private var hasRequestedRemoteNotifications = false
+#endif
 
     init(
         credentialsStore: CredentialsStore,
         apiClient: any AppStoreConnectAPI,
         liveStatusClient: any CIRunningBuildStatusAPI,
         liveActivityManager: any BuildLiveActivityManaging,
+        liveStatusDeviceRegistrationClient: any LiveStatusDeviceRegistrationAPI,
         userDefaults: UserDefaults
     ) {
         self.credentialsStore = credentialsStore
         self.apiClient = apiClient
         self.liveStatusClient = liveStatusClient
         self.liveActivityManager = liveActivityManager
+        self.liveStatusDeviceRegistrationClient = liveStatusDeviceRegistrationClient
         self.userDefaults = userDefaults
 
         reloadCredentials()
@@ -199,6 +219,43 @@ final class BuildFeedStore {
                 await self?.reloadAfterCredentialUpdate()
             }
         }
+
+#if os(iOS)
+        _ = NotificationCenter.default.addObserver(
+            forName: .didRegisterRemoteNotificationToken,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let token = notification.userInfo?["deviceToken"] as? String else { return }
+            Task { @MainActor [weak self] in
+                await self?.handleRemoteDeviceTokenUpdate(token)
+            }
+        }
+
+        _ = NotificationCenter.default.addObserver(
+            forName: .didFailToRegisterRemoteNotifications,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let error = notification.object as? Error else { return }
+            let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            Task { @MainActor [weak self] in
+                self?.liveStatusMessage = message
+            }
+        }
+
+        _ = NotificationCenter.default.addObserver(
+            forName: .didReceiveLiveStatusWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                await self?.handleLiveStatusWakeNotification()
+            }
+        }
+#endif
+
+        bootstrapLiveStatusConfigurationFromDefaults()
     }
 
     convenience init() {
@@ -207,6 +264,7 @@ final class BuildFeedStore {
             apiClient: AppStoreConnectClient(),
             liveStatusClient: CIRunningBuildStatusClient(),
             liveActivityManager: BuildLiveActivityManager(),
+            liveStatusDeviceRegistrationClient: LiveStatusDeviceRegistrationClient(),
             userDefaults: .standard
         )
     }
@@ -267,6 +325,8 @@ final class BuildFeedStore {
                !buildRuns.contains(where: { $0.app?.id == dashboardFilterAppID }) {
                 setDashboardFilter(appID: nil)
             }
+
+            await registerDeviceForWakeNotificationsIfNeeded()
         } catch {
             appSelectionMessage = sanitizedMessage(for: error)
         }
@@ -291,6 +351,7 @@ final class BuildFeedStore {
         }
 
         await refreshBuildRuns()
+        await registerDeviceForWakeNotificationsIfNeeded()
     }
 
     func selectApp(_ app: ASCAppSummary) async {
@@ -304,6 +365,7 @@ final class BuildFeedStore {
         persistMonitoringMode(.singleApp)
         errorMessage = nil
         await refreshBuildRuns()
+        await registerDeviceForWakeNotificationsIfNeeded()
     }
 
     func clearSelectedApp() {
@@ -313,6 +375,7 @@ final class BuildFeedStore {
         repositories = []
         liveStatus = nil
         liveStatusMessage = nil
+        lastRegisteredDeviceSubscription = nil
         clearSelectedAppDefaults()
         Task { [weak self] in
             await self?.liveActivityManager.end()
@@ -612,6 +675,10 @@ final class BuildFeedStore {
         isPollingLiveStatus = false
 
         guard enabled else {
+            liveStatusEndpointURL = nil
+            Task { [weak self] in
+                await self?.liveStatusDeviceRegistrationClient.setEndpointURL(nil)
+            }
             liveStatusMessage = nil
             Task { [weak self] in
                 await self?.liveActivityManager.end()
@@ -622,13 +689,29 @@ final class BuildFeedStore {
         guard let endpointURL = URL(string: endpoint),
               let scheme = endpointURL.scheme?.lowercased(),
               scheme == "https" || scheme == "http" else {
+            liveStatusEndpointURL = nil
+            Task { [weak self] in
+                await self?.liveStatusDeviceRegistrationClient.setEndpointURL(nil)
+            }
             liveStatus = nil
             liveStatusMessage = "Set a valid status endpoint URL."
             return
         }
 
+        liveStatusEndpointURL = endpointURL
         let interval = max(10, intervalSeconds)
         isPollingLiveStatus = true
+
+#if os(iOS)
+        ensureRemoteNotificationRegistration()
+#endif
+
+        let deviceRegistrationEndpoint = Self.derivedDeviceRegistrationEndpoint(from: endpointURL)
+        Task { [weak self] in
+            guard let self else { return }
+            await self.liveStatusDeviceRegistrationClient.setEndpointURL(deviceRegistrationEndpoint)
+            await self.registerDeviceForWakeNotificationsIfNeeded()
+        }
 
         liveStatusTask = Task { [weak self] in
             guard let self else { return }
@@ -649,6 +732,10 @@ final class BuildFeedStore {
         liveStatusTask?.cancel()
         liveStatusTask = nil
         isPollingLiveStatus = false
+        liveStatusEndpointURL = nil
+        Task { [weak self] in
+            await self?.liveStatusDeviceRegistrationClient.setEndpointURL(nil)
+        }
         Task { [weak self] in
             await self?.liveActivityManager.end()
         }
@@ -673,7 +760,8 @@ final class BuildFeedStore {
             await liveActivityManager.update(
                 appID: selectedApp.id,
                 appName: selectedApp.name,
-                runningCount: status.runningCount
+                runningCount: status.runningCount,
+                singleBuildStartedAt: status.singleBuildStartedAt
             )
         } catch {
             liveStatusMessage = sanitizedMessage(for: error)
@@ -752,12 +840,84 @@ final class BuildFeedStore {
         dashboardFilterAppID = userDefaults.string(forKey: DefaultsKey.dashboardFilterAppID)
     }
 
+    private func bootstrapLiveStatusConfigurationFromDefaults() {
+        let isEnabled = userDefaults.bool(forKey: DefaultsKey.liveStatusEnabled)
+        let endpoint = userDefaults.string(forKey: DefaultsKey.liveStatusEndpointURL) ?? ""
+        let interval = userDefaults.object(forKey: DefaultsKey.liveStatusPollIntervalSeconds) as? Double ?? 30
+        configureLiveStatusPolling(
+            enabled: isEnabled,
+            endpoint: endpoint,
+            intervalSeconds: interval
+        )
+    }
+
+    private static func derivedDeviceRegistrationEndpoint(from statusEndpoint: URL) -> URL? {
+        guard var components = URLComponents(url: statusEndpoint, resolvingAgainstBaseURL: false) else {
+            return nil
+        }
+
+        components.query = nil
+        components.fragment = nil
+
+        let path = components.path.isEmpty ? "/status.php" : components.path
+        let directory = (path as NSString).deletingLastPathComponent
+        let normalizedDirectory = directory.isEmpty ? "/" : directory
+        components.path = (normalizedDirectory as NSString).appendingPathComponent("register_device.php")
+        return components.url
+    }
+
+#if os(iOS)
+    private func ensureRemoteNotificationRegistration() {
+        guard !hasRequestedRemoteNotifications else { return }
+        hasRequestedRemoteNotifications = true
+        UIApplication.shared.registerForRemoteNotifications()
+    }
+#endif
+
+    private func handleRemoteDeviceTokenUpdate(_ token: String) async {
+        latestRemoteDeviceToken = token
+        await registerDeviceForWakeNotificationsIfNeeded()
+    }
+
+    private func handleLiveStatusWakeNotification() async {
+        guard isPollingLiveStatus, let endpointURL = liveStatusEndpointURL else { return }
+        await refreshLiveStatus(endpointURL: endpointURL)
+    }
+
+    private func registerDeviceForWakeNotificationsIfNeeded() async {
+        guard isPollingLiveStatus,
+              liveStatusEndpointURL != nil,
+              let selectedApp,
+              let latestRemoteDeviceToken,
+              let appBundleID = Bundle.main.bundleIdentifier else {
+            return
+        }
+
+        let candidate = DeviceSubscription(appID: selectedApp.id, token: latestRemoteDeviceToken)
+        guard candidate != lastRegisteredDeviceSubscription else { return }
+
+        do {
+            try await liveStatusDeviceRegistrationClient.registerDevice(
+                appID: selectedApp.id,
+                deviceToken: latestRemoteDeviceToken,
+                appBundleID: appBundleID
+            )
+            lastRegisteredDeviceSubscription = candidate
+        } catch {
+            liveStatusMessage = sanitizedMessage(for: error)
+        }
+    }
+
     func sanitizedMessage(for error: Error) -> String {
         if let known = error as? AppStoreConnectClientError {
             return known.localizedDescription
         }
 
         if let known = error as? CIRunningBuildStatusClientError {
+            return known.localizedDescription
+        }
+
+        if let known = error as? LiveStatusDeviceRegistrationError {
             return known.localizedDescription
         }
 

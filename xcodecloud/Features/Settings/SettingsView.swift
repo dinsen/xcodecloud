@@ -121,6 +121,10 @@ struct SettingsView: View {
                 TextField("Status endpoint URL", text: $liveStatusEndpointURL)
                 #endif
 
+                Text("Background wake notifications use register_device.php on the same server path as this status endpoint.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
                 HStack {
                     Text("Poll Interval")
                     Spacer()

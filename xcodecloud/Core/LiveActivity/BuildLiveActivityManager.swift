@@ -2,7 +2,7 @@ import Foundation
 
 protocol BuildLiveActivityManaging {
     @MainActor
-    func update(appID: String, appName: String, runningCount: Int) async
+    func update(appID: String, appName: String, runningCount: Int, singleBuildStartedAt: Date?) async
 
     @MainActor
     func end() async
@@ -15,6 +15,7 @@ struct BuildLiveActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var appName: String
         var runningCount: Int
+        var singleBuildStartedAt: Date?
         var updatedAt: Date
     }
 
@@ -25,7 +26,7 @@ struct BuildLiveActivityAttributes: ActivityAttributes {
 final class BuildLiveActivityManager: BuildLiveActivityManaging {
     private var activity: Activity<BuildLiveActivityAttributes>?
 
-    func update(appID: String, appName: String, runningCount: Int) async {
+    func update(appID: String, appName: String, runningCount: Int, singleBuildStartedAt: Date?) async {
         guard #available(iOS 16.2, *) else { return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
@@ -37,6 +38,7 @@ final class BuildLiveActivityManager: BuildLiveActivityManaging {
         let state = BuildLiveActivityAttributes.ContentState(
             appName: appName,
             runningCount: runningCount,
+            singleBuildStartedAt: singleBuildStartedAt,
             updatedAt: Date()
         )
 
@@ -71,7 +73,7 @@ final class BuildLiveActivityManager: BuildLiveActivityManaging {
 #else
 @MainActor
 final class BuildLiveActivityManager: BuildLiveActivityManaging {
-    func update(appID: String, appName: String, runningCount: Int) async {}
+    func update(appID: String, appName: String, runningCount: Int, singleBuildStartedAt: Date?) async {}
     func end() async {}
 }
 #endif

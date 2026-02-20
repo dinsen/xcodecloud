@@ -11,7 +11,13 @@ $appId = trim((string) ($_GET['appId'] ?? ''));
 $db = db_connect();
 
 if ($appId !== '') {
-    $stmt = $db->prepare('SELECT COUNT(*) AS running_count FROM xcc_running_builds WHERE app_id = ?');
+    $stmt = $db->prepare(
+        'SELECT
+            COUNT(*) AS running_count,
+            CASE WHEN COUNT(*) = 1 THEN MIN(started_at) ELSE NULL END AS single_build_started_at
+         FROM xcc_running_builds
+         WHERE app_id = ?'
+    );
     if (!$stmt) {
         json_response(500, ['ok' => false, 'error' => 'query prepare failed']);
     }
@@ -22,7 +28,12 @@ if ($appId !== '') {
     $count = (int) ($row['running_count'] ?? 0);
     $stmt->close();
 } else {
-    $result = $db->query('SELECT COUNT(*) AS running_count FROM xcc_running_builds');
+    $result = $db->query(
+        'SELECT
+            COUNT(*) AS running_count,
+            CASE WHEN COUNT(*) = 1 THEN MIN(started_at) ELSE NULL END AS single_build_started_at
+         FROM xcc_running_builds'
+    );
     if (!$result) {
         json_response(500, ['ok' => false, 'error' => 'query failed']);
     }
@@ -30,8 +41,30 @@ if ($appId !== '') {
     $count = (int) ($row['running_count'] ?? 0);
 }
 
+$singleBuildStartedAt = mysql_datetime_to_iso8601($row['single_build_started_at'] ?? null);
+
 json_response(200, [
     'buildsRunning' => $count > 0,
     'runningCount' => $count,
+    'singleBuildStartedAt' => $singleBuildStartedAt,
     'checkedAt' => gmdate('c'),
 ]);
+
+function mysql_datetime_to_iso8601(mixed $value): ?string
+{
+    if (!is_string($value)) {
+        return null;
+    }
+
+    $value = trim($value);
+    if ($value === '') {
+        return null;
+    }
+
+    try {
+        $date = new DateTimeImmutable($value);
+        return $date->format(DateTimeInterface::ATOM);
+    } catch (Throwable) {
+        return null;
+    }
+}

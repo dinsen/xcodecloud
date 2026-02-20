@@ -45,7 +45,15 @@ struct BuildRunRowView: View {
                     }
                 }
 
-                if let date = run.timestamp {
+                if run.status == .running, let startedDate = run.startedDate ?? run.createdDate {
+                    HStack(spacing: 4) {
+                        Text("Elapsed")
+                        Text(startedDate, style: .timer)
+                            .monospacedDigit()
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                } else if let date = run.timestamp {
                     Text(date.shortDateTimeString())
                         .font(.caption2)
                         .foregroundStyle(.secondary)

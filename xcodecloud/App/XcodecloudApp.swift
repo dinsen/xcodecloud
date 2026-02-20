@@ -2,6 +2,9 @@ import SwiftUI
 
 @main
 struct XcodecloudApp: App {
+#if os(iOS)
+    @UIApplicationDelegateAdaptor(IOSAppDelegate.self) private var appDelegate
+#endif
     @State private var buildFeedStore = BuildFeedStore()
 
     var body: some Scene {

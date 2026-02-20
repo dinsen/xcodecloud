@@ -6,6 +6,7 @@ struct BuildLiveActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var appName: String
         var runningCount: Int
+        var singleBuildStartedAt: Date?
         var updatedAt: Date
     }
 
@@ -20,6 +21,14 @@ struct BuildLiveActivityWidget: Widget {
                     .font(.headline)
                 Text("\(context.state.runningCount) build\(context.state.runningCount == 1 ? "" : "s") running")
                     .font(.subheadline)
+                if context.state.runningCount == 1, let startedAt = context.state.singleBuildStartedAt {
+                    HStack(spacing: 4) {
+                        Text("Elapsed")
+                        Text(startedAt, style: .timer)
+                            .monospacedDigit()
+                    }
+                    .font(.caption)
+                }
                 Text("Updated \(context.state.updatedAt, style: .time)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -35,21 +44,41 @@ struct BuildLiveActivityWidget: Widget {
                 }
 
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text("\(context.state.runningCount)")
-                        .font(.title3)
-                        .bold()
+                    if context.state.runningCount == 1, let startedAt = context.state.singleBuildStartedAt {
+                        Text(startedAt, style: .timer)
+                            .font(.headline.monospacedDigit())
+                    } else {
+                        Text("\(context.state.runningCount)")
+                            .font(.title3)
+                            .bold()
+                    }
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
-                    Text(context.state.appName)
-                        .font(.caption)
-                        .lineLimit(1)
+                    HStack(spacing: 8) {
+                        Text(context.state.appName)
+                            .lineLimit(1)
+
+                        Spacer()
+
+                        if context.state.runningCount == 1, let startedAt = context.state.singleBuildStartedAt {
+                            Text(startedAt, style: .timer)
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .font(.caption)
                 }
             } compactLeading: {
                 Image(systemName: "hammer.fill")
             } compactTrailing: {
-                Text("\(context.state.runningCount)")
-                    .monospacedDigit()
+                if context.state.runningCount == 1, let startedAt = context.state.singleBuildStartedAt {
+                    Text(startedAt, style: .timer)
+                        .font(.caption2.monospacedDigit())
+                } else {
+                    Text("\(context.state.runningCount)")
+                        .monospacedDigit()
+                }
             } minimal: {
                 Text("\(context.state.runningCount)")
                     .monospacedDigit()
