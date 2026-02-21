@@ -10,6 +10,12 @@ struct ContentView: View {
 
     private static let allAppsFilterValue = "__all_apps__"
 
+    private var appFilterIconName: String {
+        buildFeedStore.dashboardFilterAppID == nil
+            ? "line.3.horizontal.decrease.circle"
+            : "line.3.horizontal.decrease.circle.fill"
+    }
+
     private var appFilterBinding: Binding<String> {
         Binding(
             get: { buildFeedStore.dashboardFilterAppID ?? Self.allAppsFilterValue },
@@ -39,7 +45,7 @@ struct ContentView: View {
                             Text(app.displayName).tag(app.id)
                         }
                     } label: {
-                        Label(buildFeedStore.dashboardFilterApp?.name ?? "All Apps", systemImage: "apps.iphone")
+                        Label(buildFeedStore.dashboardFilterApp?.name ?? "All Apps", systemImage: appFilterIconName)
                     }
                     .pickerStyle(.menu)
                     .accessibilityIdentifier("dashboard-app-filter")
