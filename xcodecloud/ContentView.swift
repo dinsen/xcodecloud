@@ -45,7 +45,8 @@ struct ContentView: View {
                             Text(app.displayName).tag(app.id)
                         }
                     } label: {
-                        Label(buildFeedStore.dashboardFilterApp?.name ?? "All Apps", systemImage: appFilterIconName)
+                        Image(systemName: appFilterIconName)
+                            .accessibilityLabel(buildFeedStore.dashboardFilterApp?.name ?? "All Apps")
                     }
                     .pickerStyle(.menu)
                     .accessibilityIdentifier("dashboard-app-filter")
