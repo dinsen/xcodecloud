@@ -8,6 +8,18 @@ struct ContentView: View {
     @AppStorage("liveStatusEndpointURL") private var liveStatusEndpointURL = ""
     @AppStorage("liveStatusPollIntervalSeconds") private var liveStatusPollIntervalSeconds: Double = 30
 
+    private static let allAppsFilterValue = "__all_apps__"
+
+    private var appFilterBinding: Binding<String> {
+        Binding(
+            get: { buildFeedStore.dashboardFilterAppID ?? Self.allAppsFilterValue },
+            set: { newValue in
+                let appID = newValue == Self.allAppsFilterValue ? nil : newValue
+                buildFeedStore.setDashboardFilter(appID: appID)
+            }
+        )
+    }
+
 #if os(macOS)
     @Environment(\.openSettings) private var openSettingsAction
 #endif
@@ -20,6 +32,19 @@ struct ContentView: View {
             BuildDashboardView()
             .navigationTitle(buildFeedStore.isMonitoringAllApps ? "Portfolio" : "Dashboard")
             .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Picker(selection: appFilterBinding) {
+                        Text("All Apps").tag(Self.allAppsFilterValue)
+                        ForEach(buildFeedStore.dashboardFilterOptions) { app in
+                            Text(app.displayName).tag(app.id)
+                        }
+                    } label: {
+                        Label(buildFeedStore.dashboardFilterApp?.name ?? "All Apps", systemImage: "apps.iphone")
+                    }
+                    .pickerStyle(.menu)
+                    .accessibilityIdentifier("dashboard-app-filter")
+                }
+
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         Task {
