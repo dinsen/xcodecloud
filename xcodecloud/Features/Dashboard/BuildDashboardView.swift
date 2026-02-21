@@ -3,18 +3,6 @@ import SwiftUI
 struct BuildDashboardView: View {
     @Environment(BuildFeedStore.self) private var buildFeedStore
 
-    private static let allAppsFilterValue = "__all_apps__"
-
-    private var appFilterBinding: Binding<String> {
-        Binding(
-            get: { buildFeedStore.dashboardFilterAppID ?? Self.allAppsFilterValue },
-            set: { newValue in
-                let appID = newValue == Self.allAppsFilterValue ? nil : newValue
-                buildFeedStore.setDashboardFilter(appID: appID)
-            }
-        )
-    }
-
     var body: some View {
         Group {
             if !buildFeedStore.hasCompleteCredentials {
@@ -43,20 +31,6 @@ struct BuildDashboardView: View {
                 )
             } else {
                 List {
-                    Section {
-                        Picker("App", selection: appFilterBinding) {
-                            Text("All Apps")
-                                .tag(Self.allAppsFilterValue)
-
-                            ForEach(buildFeedStore.dashboardFilterOptions) { app in
-                                Text(app.displayName)
-                                    .tag(app.id)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .accessibilityIdentifier("dashboard-app-filter")
-                    }
-
                     Section {
                         VStack(alignment: .leading, spacing: 4) {
                             if let filteredApp = buildFeedStore.dashboardFilterApp {
